@@ -10,6 +10,7 @@ import _ from "lodash"
 import SetCell from "./set-cell"
 import AddAssetModal from "./add-asset-modal"
 import AddSetModal from "./add-set-modal"
+import BuildCSVModal from "./build-csv-modal"
 
 
 const Index = () => {
@@ -22,6 +23,7 @@ const Index = () => {
 
     const [addAssetModal, setAddAssetModal] = useState<string|null>(null)
     const [addSetModal, setAddSetModal] = useState<boolean>(false)
+    const [showBuildCSVModal, setShowBuildCSVModal] = useState<boolean>(false)
 
     useAcey([
         appStatus,
@@ -40,6 +42,7 @@ const Index = () => {
           <div>
             <Header status={appStatus} onClick={(menu) => {
               menu === 'add-pair' && setAddSetModal(true)
+              menu === 'build-csv' && setShowBuildCSVModal(true)
             }} />
             {sets.map((set: SetModel) => {
                 const setID = set.get().settings().get().idString()
@@ -65,6 +68,11 @@ const Index = () => {
           <AddSetModal 
             onClose={() => setAddSetModal(false)}
             show={addSetModal}
+            dropdownRef={dropdownRef}
+          />
+          <BuildCSVModal 
+            show={showBuildCSVModal}
+            onClose={() => setShowBuildCSVModal(false)}
             dropdownRef={dropdownRef}
           />
           {/* <AddPairModal

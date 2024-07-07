@@ -78,40 +78,40 @@ const AssetCell = (props: IProps) => {
                 </div>
                 {isOpen && (
                     <div
-                    onMouseLeave={() => setIsOpen(false)}
-                    ref={floating.refs.floating as any}
-                    style={{
-                        position: floating.strategy,
-                        backgroundColor: 'black',
-                        border: '1px solid #ccc',
-                        padding: '10px',
-                        borderRadius: '5px',
-                        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                        zIndex: 1000,
-                        width: 250
-                    }}
-                    >
-                        <p style={{fontSize: 14, margin: 0, fontWeight: 800}}>
-                            {ressource.get().label()}
-                            <span style={{fontSize: 11, color: dataTypeColor, marginLeft: 3  }}>({dataTypeName})</span>
-                        </p>
-                        <p style={{fontSize: 12.5, marginTop: 10, fontStyle: 'italic'}}>
-                            {ressource.get().description()}
-                        </p>
+                        onMouseLeave={() => setIsOpen(false)}
+                        ref={floating.refs.floating as any}
+                        style={{
+                            position: floating.strategy,
+                            backgroundColor: 'black',
+                            border: '1px solid #ccc',
+                            padding: '10px',
+                            borderRadius: '5px',
+                            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                            zIndex: 1000,
+                            width: 250
+                        }}
+                        >
+                            <p style={{fontSize: 14, margin: 0, fontWeight: 800}}>
+                                {ressource.get().label()}
+                                <span style={{fontSize: 11, color: dataTypeColor, marginLeft: 3  }}>({dataTypeName})</span>
+                            </p>
+                            <p style={{fontSize: 12.5, marginTop: 10, fontStyle: 'italic'}}>
+                                {ressource.get().description()}
+                            </p>
 
-                        <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 15}}>
-                            <span style={{fontSize: 10, color: WHITE_GREY}}>Max data latency: <span style={{fontSize: 11, fontWeight: 800, color: 'white'}}>{asset.get().consistencyMaxLookbackDays() * 24}h</span></span>
-                            <span style={{fontSize: 10, marginLeft: 10, color: WHITE_GREY}}>Decimals: <span style={{fontSize: 11, fontWeight: 800, color: 'white'}}>{asset.get().decimals()}</span></span>
-                        </div>
+                            <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 15}}>
+                                <span style={{fontSize: 10, color: WHITE_GREY}}>Max data latency: <span style={{fontSize: 11, fontWeight: 800, color: 'white'}}>{asset.get().consistencyMaxLookbackDays() * 24}h</span></span>
+                                <span style={{fontSize: 10, marginLeft: 10, color: WHITE_GREY}}>Decimals: <span style={{fontSize: 11, fontWeight: 800, color: 'white'}}>{asset.get().decimals()}</span></span>
+                            </div>
 
-                        <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', borderTop: '1px solid white', marginTop: 5, paddingTop: 10}}>
-                            <span style={{fontSize: 11, color: WHITE_GREY}}>Data availability:</span>
-                            {t1 > t0 &&<span style={{marginLeft: 5, fontSize: 11, fontWeight: 800}}>{t0} / <span style={{color: synced ? FLASHY_GREEN : GOLD}}>{!synced ? t1 : moment(t1).fromNow()}</span></span>}
-                            {t1 <= t0 &&<span style={{marginLeft: 5, fontSize: 11, color: GOLD}}>None</span>}
-                        </div>
-                        <p style={{fontSize: assetType.length > 30 ? 9.5 : 11, margin: 0, marginTop: 5}}>
-                            ID: <span style={{fontWeight: 600}}>{assetType.toUpperCase()}</span>
-                        </p> 
+                            <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', borderTop: '1px solid white', marginTop: 5, paddingTop: 10}}>
+                                <span style={{fontSize: 11, color: WHITE_GREY}}>Data availability:</span>
+                                {t1 > t0 &&<span style={{marginLeft: 5, fontSize: 11, fontWeight: 800}}>{t0} / <span style={{color: synced ? FLASHY_GREEN : GOLD}}>{!synced ? t1 : moment(t1).fromNow()}</span></span>}
+                                {t1 <= t0 &&<span style={{marginLeft: 5, fontSize: 11, color: GOLD}}>None</span>}
+                            </div>
+                            <p style={{fontSize: assetType.length > 30 ? 9.5 : 11, margin: 0, marginTop: 5}}>
+                                ID: <span style={{fontWeight: 600}}>{assetType.toUpperCase()}</span>
+                            </p> 
 
                     </div>
                 )}

@@ -1,4 +1,5 @@
 import { Model, Collection } from 'acey'
+import ressources from '../ressources'
 
 // type AssetAddressParsed struct {
 //     SetID        []string       `json:"set_id"`
@@ -39,13 +40,15 @@ export class AddressParsedModel extends Model {
                 let depStr = ""
                 const dep = this.get().dependencies()
                 if (dep){
+                    console.log(dep.to().plain)
                     depStr = dep.map((d: AddressParsedModel) => {
-                        return d.get().printableID()
+                        const r = ressources.get().availableAssets().findByAssetType(d.get().assetType())
+                        return r.get().label()
                     }).join(', ')
                 }
                 const argumentStr = this.get().arguments().join(", ")
                 let ret = ''
-                ret = this.get().assetType()
+                ret = this.get().assetType().toUpperCase()
                 if (argumentStr !== ""){
                     ret += `(${argumentStr})`
                 }
