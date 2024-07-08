@@ -38,6 +38,22 @@ export class StatusModel extends Model {
         }))
     }
 
+    buildCSV = async (timeframe: number, from: Date, to: Date, unPackedOrders: string[][]) => {
+        try {
+            await service.request('BuildCSV', {
+                from: from.getTime() / 1000,
+                to: to.getTime() / 1000,
+                timeframe,
+                orders: unPackedOrders
+            })
+            return null
+        } catch (e: any) {
+            return e.toString() as string
+        }
+    }
+    
+
+    
     refresh = async () => {
         try {
             const r = await service.request('GetStatus', {}) as IStatus

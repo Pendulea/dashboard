@@ -1,7 +1,6 @@
 
 
 import { IModelOptions, Model, Collection } from 'acey'
-import { COLUMN } from '../../constants/columns'
 
 export interface ICSVStatus {
     build_id: string
@@ -11,7 +10,6 @@ export interface ICSVStatus {
     from: number
     to: number
     request_time: number
-    assets: string[][] 
     timeframe_label: string
 }
 
@@ -24,7 +22,6 @@ const DEFAULT_CSV_STATUS: ICSVStatus = {
     from: 0,
     to: 0,
     timeframe_label: '',
-    assets: []
 }
 
 export class CSVStatusModel extends Model {
@@ -40,8 +37,7 @@ export class CSVStatusModel extends Model {
             size: (): number => this.state.size,
             from: (): number => this.state.from,
             to: (): number => this.state.to,
-            requestTime: (): number => this.state.request_time,
-            assets: (): string[][] => this.state.assets,
+            requestTime: (): Date => new Date(this.state.request_time * 1000),
             timeframeLabel: (): string => this.state.timeframe_label
         }
     }

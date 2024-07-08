@@ -40,7 +40,6 @@ export class AddressParsedModel extends Model {
                 let depStr = ""
                 const dep = this.get().dependencies()
                 if (dep){
-                    console.log(dep.to().plain)
                     depStr = dep.map((d: AddressParsedModel) => {
                         const r = ressources.get().availableAssets().findByAssetType(d.get().assetType())
                         return r.get().label()

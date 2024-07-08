@@ -122,6 +122,39 @@ export class SetCollection extends Collection {
         super(models, [SetModel, SetCollection], options)
     }
 
+
+    assetsByAddresses = (addresses: string[]) => {
+        const formated = _.uniq(addresses)
+        let assets: AssetModel[] = []
+        this.forEach((set: SetModel) => {
+            set.get().assets().forEach((asset: AssetModel) => {
+                if (formated.includes(asset.get().addressString())){
+                    assets.push(asset)
+                }
+            })
+        })
+        return new AssetCollection(assets, {})
+    }
+
+    commonTimeframes = () => {
+        const first = this.first() as SetModel
+        if (!first){
+            return []
+        }
+        let refTimeframes = first.get().availableTimeframes()
+        this.forEach((set: SetModel) => {
+            refTimeframes = _.intersection(refTimeframes, set.get().availableTimeframes())
+        })
+        return refTimeframes
+    }
+
+
+    filterByIDs = (ids: string[]) => {
+        return this.filter((set: SetModel) => {
+            return ids.includes(set.get().settings().get().idString())
+        }).uniq() as SetCollection
+    }
+
     findByID = (id: string) => {
         return this.find((set: SetModel) => {
             return set.get().settings().get().idString() === id

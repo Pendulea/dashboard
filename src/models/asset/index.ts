@@ -3,6 +3,7 @@ import { AddressParsedModel, DEFAULT_ADDRESS_PARSED, IAddressParsed } from './ad
 import { ConsistencyCollection, IConsistency } from './consistency'
 import { AvailableAssetCollection, AvailableAssetModel } from '../ressources/asset'
 import ressources from '../ressources'
+import { Format } from '../../utils'
 
 export interface IAsset {
     address_string: string
@@ -63,6 +64,30 @@ export class AssetModel extends Model {
 export class AssetCollection extends Collection {
     constructor(state: (IAsset | AssetModel)[] = [], options: any){
         super(state, [AssetModel, AssetCollection], options)
+    }
+
+    findLeastMaxConsistency = (timeframe: number) => {
+        let min = '9999-12-31'
+
+        for (let i = 0; i < this.count(); i++){
+            const asset = this.nodeAt(i) as AssetModel
+            const consistency = asset.get().consistencies().findByTimeframe(timeframe)
+            if (!consistency){
+                return null
+            }
+            if (consistency.get().range()[1] > consistency.get().range()[0]){
+                const d = Format.unixTimestampToStrDate(new Date(consistency.get().range()[1]))
+                if (d < min){
+                    min = d
+                } 
+            } else {
+                return null
+            }
+        }
+        if (min === '9999-12-31'){
+            return null
+        }
+        return min
     }
 
     findMinHistoricalDate = () => {
