@@ -3,7 +3,11 @@ import { AddressParsedModel, DEFAULT_ADDRESS_PARSED, IAddressParsed } from './ad
 import { ConsistencyCollection, IConsistency } from './consistency'
 import { AvailableAssetCollection, AvailableAssetModel } from '../ressources/asset'
 import ressources from '../ressources'
-import { Format } from '../../utils'
+import { Format, service } from '../../utils'
+import { IPointData, PointCollection } from '../tick/point'
+import { IUnitData, UnitCollection } from '../tick/unit'
+import { IQuantityData, QuantityCollection } from '../tick/quantity'
+import { TickCollection } from '../tick'
 
 export interface IAsset {
     address_string: string
@@ -26,13 +30,64 @@ const DEFAULT_ASSET: IAsset = {
 }
 
 export class AssetModel extends Model {
+
+    private _ticks: TickCollection | null = null
+    private _done: boolean = false
+        
     constructor(state: IAsset = DEFAULT_ASSET, options: any){
         super({}, options)
         this.setState(Object.assign({}, state, {
             address: new AddressParsedModel(state.address, this.kids()),
-            consistencies: new ConsistencyCollection(state.consistencies, this.kids())
+            consistencies: new ConsistencyCollection(state.consistencies, this.kids()),
+            fetching_ticks: false
         }))
     }
+
+
+
+    fetchTicks = async (timeframe: number) => {
+        if (this.isFetchingTicks() || this._done == true){
+            return this._ticks
+        }
+        const LIMIT = 1000
+        try {
+            this.setState({fetching_ticks: true})
+            const res = await service.request('GetTicks', {
+                address: this.get().addressString(),
+                timeframe,
+                offset_unix_time: !this._ticks ? Date.now() : this._ticks.earliestTime(),
+            }) as {
+                data_type: number,
+                list: (IPointData | IUnitData | IQuantityData)[]
+            }
+            if (!this._ticks){
+                switch (res.data_type){
+                    case 1:
+                        this._ticks = new UnitCollection([])
+                        break
+                    case 2:
+                        this._ticks = new QuantityCollection([])
+                        break
+                    case 3:
+                        this._ticks = new PointCollection([])
+                        break
+                    default:
+                        throw new Error('Unknown data type')
+                }
+            } 
+            if (res.list.length < LIMIT){
+                this._done = true
+            }
+            this._ticks.add(res.list as any)
+            this.setState({fetching_ticks: false})
+            return this._ticks
+        } catch (e: any) {
+            this.setState({fetching_ticks: false})
+            return e.toString() as string
+        }
+    }
+
+    isFetchingTicks = (): boolean => this.state.fetching_ticks
 
     get = () => {
         return {
@@ -45,7 +100,8 @@ export class AssetModel extends Model {
             minDataDate: (): string => this.state.min_data_date,
             ressource: (): AvailableAssetModel => {
                 return ressources.get().availableAssets().findByAssetType(this.get().address().get().assetType())
-            }
+            },
+            ticks: (): TickCollection | null => this._ticks,
         }
     }
 

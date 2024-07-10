@@ -4,11 +4,15 @@ import { Model, Collection} from 'acey'
 export interface IConsistency {
     range: number[]
     timeframe: number
+    min_value: number  
+    max_value: number
 }
 
 export const DEFAULT_CONSISTENCY: IConsistency = {
     range: [0,0],
-    timeframe: 0
+    timeframe: 0,
+    min_value: 0,
+    max_value: 0
 }
 
 export class ConsistencyModel extends Model {
@@ -19,7 +23,9 @@ export class ConsistencyModel extends Model {
     get = () => {
         return {
             range: (): number[] => this.state.range.slice(),
-            timeframe: (): number => this.state.timeframe
+            timeframe: (): number => this.state.timeframe,
+            minValue: (): number => this.state.min_value,
+            maxValue: (): number => this.state.max_value
         }
     }
 }

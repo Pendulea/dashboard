@@ -22,8 +22,52 @@ const SetCell = (props:IProps) => {
     const symbol0 = id[0]
     const symbol1 = id[1]
 
+
+    const renderAssetList = () => {
+        const CHUNK = 5
+        const width = 100 / CHUNK - 1 + '%'
+        
+        const ret = (set.get().assets().orderByAddressAsc().chunk(CHUNK) as AssetCollection[]).map((assetList: AssetCollection, idx: number) => {
+            return assetList.map((cas: AssetModel, idx: number) => {
+                return (
+                      <div style={{width}} key={cas.get().addressString()}>
+                          <AssetCell 
+                              asset={cas}
+                              set={set}
+                              timeframe={timeframe}
+                          />
+                      </div>
+                  )
+              }) as any[]
+        }) as any[][]
+        const lastLine = ret[ret.length - 1]
+        if (lastLine.length == CHUNK) {
+            ret.push([])
+        }
+        ret[ret.length - 1].push(<div key={'add asset btn'} style={{width, display: 'flex', justifyContent: 'center'}}>
+            <Button 
+                style={{width: '50%', height: 25}}
+                textStyle={{fontSize: 12}}
+                color='black'
+                icon='/images/plus-white.png'
+                title=''
+                iconStyle={{width: 14, height: 14}}
+                onClick={props.onOpenAddAssetModal}
+            />
+        </div>)
+
+        return ret.map((line, idx) => {
+            return (
+                <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', marginTop: 20}} key={'assetlist'+idx}>
+                    {line}
+                </div>
+            )
+        })
+
+    }
+
     return (
-        <div style={{border: `1px solid white`, paddingBottom: 30}}>
+        <div style={{borderBottom: `1px solid white`, paddingBottom: 30}}>
             <SetCellContainer>
 
                 <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -46,8 +90,8 @@ const SetCell = (props:IProps) => {
                         </div>
                     </div>
 
-                    <div style={{width: 250, marginTop: 0, display: 'flex', flexDirection: 'row'}}>
-                        <span style={{ textAlign: 'center', marginRight: 10}} className="sectitle">TIMEFRAME:</span>
+                    <div style={{width: 200, marginTop: 0, display: 'flex', flexDirection: 'column', marginRight: 10}}>
+                        <span style={{ marginRight: 10}} className="sectitle">TIMEFRAME:</span>
                         <TimeframeSelect 
                             onSelect={(timeframe: number) => onSelectTimeframe(timeframe)}
                             set={set}
@@ -55,33 +99,10 @@ const SetCell = (props:IProps) => {
                             defaultValue={timeframe}
                         />
                     </div>
-                    <Button 
-                        style={{width: 90, height: 25, marginLeft: 40, marginTop: 5}}
-                        title="Add Asset"
-                        color={'white'}
-                        textStyle={{fontSize: 12}}
-                        onClick={props.onOpenAddAssetModal}
-                    />
                 </div>
 
                 <div style={{marginTop: 30, marginLeft: '2%', marginRight: '2%', marginBottom: 50}}>
-                    {set.get().assets().orderByAddressAsc().chunk(5).map((assetList: any, idx: number) => {
-                        return (
-                            <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', marginTop: 20}} key={'assetlist'+idx}>
-                                {assetList.map((cas: AssetModel, idx: number) => {
-                                  return (
-                                        <div style={{width: '19%'}} key={cas.get().addressString()}>
-                                            <AssetCell 
-                                                asset={cas}
-                                                set={set}
-                                                timeframe={timeframe}
-                                            />
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        )                        
-                    })}
+                    {renderAssetList()}
                 </div>
 
             </SetCellContainer>

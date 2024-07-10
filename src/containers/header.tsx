@@ -4,7 +4,7 @@ import { Format } from "../utils";
 import Button from "../components/button";
 import { GOLD, GREEN, RED } from "../constants";
 
-export type T_MENU = 'add-pair' | 'build-csv'
+export type T_MENU = 'add-pair' | 'build-csv' | 'view-chart'
 
 export interface IProps {
     status: StatusModel
@@ -56,6 +56,13 @@ export const Header = (props: IProps) => {
                     title={'Build CSV'}
                     color={'blue'}
                     onClick={() => props.onClick('build-csv')}
+                />
+                  <Button
+                    style={{height:26, width: 100, marginRight: 15}}
+                    textStyle={{fontSize: 12}}
+                    title={'Chart'}
+                    color={'red'}
+                    onClick={() => props.onClick('view-chart')}
                 />
             </div>
       </div>

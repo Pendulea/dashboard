@@ -157,7 +157,7 @@ const BuildCSVModal: React.FC<BuildCSVModalProps> = ({ onClose, dropdownRef, sho
             <span style={{fontSize: 12}}>SELECT TIMEFRAME</span>
             <span style={{fontSize: 9.5, marginTop: 3}}>(PICK ONE IN THE {setIDs.length > 1 ? 'COMMON TIMEFRAMES AMONG ' : ''} <span style={{fontWeight: 800}}>{setIDs.join(', ').toUpperCase()}</span> {setIDs.length == 1 ? 'TIMEFRAMES' : ''})</span>
             <div style={{display: 'flex', flexDirection: 'row', marginTop: 10}}>
-                    {listAvailableTimeframes().map((timeframe: number, idx: number) => {
+                    {_.orderBy(listAvailableTimeframes()).map((timeframe: number, idx: number) => {
                         return (
                             <TimeframeCell 
                                 key={'rereggrg'+ idx}
@@ -177,7 +177,6 @@ const BuildCSVModal: React.FC<BuildCSVModalProps> = ({ onClose, dropdownRef, sho
         return (
             <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'space-between', borderTop: '1px solid white', paddingTop: 20}}>
                 {renderSelectCSVTimeframe()}
-
                 <div style={{display: 'flex', flexDirection: 'row', marginRight: 20}}>
                     {renderMinDateInput()}
                     {renderToDateInput()}
@@ -216,7 +215,6 @@ const BuildCSVModal: React.FC<BuildCSVModalProps> = ({ onClose, dropdownRef, sho
                         disabled={orders[orders.length-1] === null}
                         iconStyle={{width: 14, height: 14}}
                         onClick={() => setOrders([...orders, null])}
-                    
                     />
                 </div>
                 {setIDs.length > 0 && renderBottomMenu()}

@@ -11,6 +11,7 @@ import SetCell from "./set-cell"
 import AddAssetModal from "./add-asset-modal"
 import AddSetModal from "./add-set-modal"
 import BuildCSVModal from "./build-csv-modal"
+import ChartModal from "../charts/chart-modal"
 
 
 const Index = () => {
@@ -24,6 +25,7 @@ const Index = () => {
     const [addAssetModal, setAddAssetModal] = useState<string|null>(null)
     const [addSetModal, setAddSetModal] = useState<boolean>(false)
     const [showBuildCSVModal, setShowBuildCSVModal] = useState<boolean>(false)
+    const [showChartModal, setShowChartModal] = useState<boolean>(false)
 
     useAcey([
         appStatus,
@@ -43,6 +45,7 @@ const Index = () => {
             <Header status={appStatus} onClick={(menu) => {
               menu === 'add-pair' && setAddSetModal(true)
               menu === 'build-csv' && setShowBuildCSVModal(true)
+              menu === 'view-chart' && setShowChartModal(true)
             }} />
             {sets.map((set: SetModel) => {
                 const setID = set.get().settings().get().idString()
@@ -73,6 +76,11 @@ const Index = () => {
           <BuildCSVModal 
             show={showBuildCSVModal}
             onClose={() => setShowBuildCSVModal(false)}
+            dropdownRef={dropdownRef}
+          />
+          <ChartModal 
+            show={showChartModal}
+            onClose={() => setShowChartModal(false)}
             dropdownRef={dropdownRef}
           />
           {/* <AddPairModal

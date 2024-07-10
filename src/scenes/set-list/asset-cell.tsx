@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { FLASHY_GREEN, GOLD, WHITE_GREY } from "../../constants"
+import { FLASHY_GREEN, GOLD, RED, WHITE_GREY } from "../../constants"
 import { AssetModel } from "../../models/asset"
 import { SetModel } from "../../models/set"
 import { Format } from "../../utils"
@@ -39,16 +39,19 @@ const AssetCell = (props: IProps) => {
     const consistency = asset.get().consistencies().findByTimeframe(timeframe)
 
     let range: number[];
+    let valueRange: number[];
     if (consistency){
         range = consistency.get().range()
-
+        valueRange = [consistency.get().minValue(), consistency.get().maxValue()]
     } else {
         if (asset.get().consistencies().count() == 0){
             range = [0, 0]
+            valueRange = [0, 0]
         } else {
             const first = asset.get().consistencies().first() as ConsistencyModel
             range = first.get().range()
             range[1] = range[0]
+            valueRange = [first.get().minValue(), first.get().maxValue()]
         }
     }
     const t0 = Format.unixTimestampToStrDate(new Date(range[0]))
@@ -109,6 +112,9 @@ const AssetCell = (props: IProps) => {
                                 {t1 > t0 &&<span style={{marginLeft: 5, fontSize: 11, fontWeight: 800}}>{t0} / <span style={{color: synced ? FLASHY_GREEN : GOLD}}>{!synced ? t1 : moment(t1).fromNow()}</span></span>}
                                 {t1 <= t0 &&<span style={{marginLeft: 5, fontSize: 11, color: GOLD}}>None</span>}
                             </div>
+                            <p style={{fontSize: 11, margin: 0, marginTop: 5}}>
+                                Data range from: <span style={{fontWeight: 600}}><span style={{color: RED}}>{Format.largeNumberToShortString(valueRange[0])}</span> to <span style={{color: FLASHY_GREEN}}>{Format.largeNumberToShortString(valueRange[1])}</span></span>
+                            </p> 
                             <p style={{fontSize: assetType.length > 30 ? 9.5 : 11, margin: 0, marginTop: 5}}>
                                 ID: <span style={{fontWeight: 600}}>{assetType.toUpperCase()}</span>
                             </p> 
