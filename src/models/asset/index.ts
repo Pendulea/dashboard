@@ -8,6 +8,10 @@ import { IPointData, PointCollection } from '../tick/point'
 import { IUnitData, UnitCollection } from '../tick/unit'
 import { IQuantityData, QuantityCollection } from '../tick/quantity'
 import { TickCollection } from '../tick'
+import Loading from '../../components/loader'
+
+const TICK_FETCHING_LIMIT = 1000
+
 
 export interface IAsset {
     address_string: string
@@ -33,7 +37,13 @@ export class AssetModel extends Model {
 
     private _ticks: TickCollection | null = null
     private _done: boolean = false
-        
+    
+    resetTicks = () => {
+        this._ticks = null
+        this._done = false
+        this.setState({loading: false})
+    }
+
     constructor(state: IAsset = DEFAULT_ASSET, options: any){
         super({}, options)
         this.setState(Object.assign({}, state, {
@@ -43,15 +53,15 @@ export class AssetModel extends Model {
         }))
     }
 
-
-
-    fetchTicks = async (timeframe: number) => {
+    fetchTicks = async (timeframe: number, limit: number = TICK_FETCHING_LIMIT): Promise<string | TickCollection> => {
         if (this.isFetchingTicks() || this._done == true){
-            return this._ticks
+            return this._ticks as TickCollection || null
         }
-        const LIMIT = 1000
+        if (this.get().ticksCount() === limit){
+            return this._ticks as TickCollection
+        }
         try {
-            this.setState({fetching_ticks: true})
+            this.setState({fetching_ticks: true}).save()
             const res = await service.request('GetTicks', {
                 address: this.get().addressString(),
                 timeframe,
@@ -75,11 +85,14 @@ export class AssetModel extends Model {
                         throw new Error('Unknown data type')
                 }
             } 
-            if (res.list.length < LIMIT){
+            if (res.list.length < TICK_FETCHING_LIMIT){
                 this._done = true
             }
             this._ticks.add(res.list as any)
-            this.setState({fetching_ticks: false})
+            this.setState({fetching_ticks: false}).save()
+            if (this._ticks.count() < limit){
+                return await this.fetchTicks(timeframe, limit) as string | TickCollection
+            }
             return this._ticks
         } catch (e: any) {
             this.setState({fetching_ticks: false})
@@ -102,6 +115,7 @@ export class AssetModel extends Model {
                 return ressources.get().availableAssets().findByAssetType(this.get().address().get().assetType())
             },
             ticks: (): TickCollection | null => this._ticks,
+            ticksCount: (): number => this._ticks ? this._ticks.count() : 0
         }
     }
 
@@ -144,6 +158,22 @@ export class AssetCollection extends Collection {
             return null
         }
         return min
+    }
+
+    findMaxTicksCount = () => {
+        let max = 0
+
+        for (let i = 0; i < this.count(); i++){
+            const asset = this.nodeAt(i) as AssetModel
+            const count = asset.get().ticksCount()
+            if (count > max){
+                max = count
+            }
+        }
+        if (max % TICK_FETCHING_LIMIT === 0){
+            return max
+        }
+        return max + (TICK_FETCHING_LIMIT - (max % TICK_FETCHING_LIMIT))
     }
 
     findMinHistoricalDate = () => {

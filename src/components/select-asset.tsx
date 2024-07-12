@@ -1,30 +1,47 @@
+import { useEffect } from "react"
 import { BLACK } from "../constants"
-import { AssetModel } from "../models/asset"
+import { AssetCollection, AssetModel } from "../models/asset"
 import { SetModel } from "../models/set"
+import React from "react"
 
 interface IProps {
-    set: SetModel
+    assets: AssetCollection
     onChangeAsset: (asset: AssetModel) => void
     selectedAsset?: AssetModel
-    dataType?: number
+    size?: number
 }
 
 const SelectAsset = (props: IProps) => {
-    const { set, selectedAsset, dataType } = props
-    if (!set) 
-            return null
+    const { assets, selectedAsset } = props
+    const selectRef = React.useRef<HTMLSelectElement>(null)
+
+    const size = props.size || 1
+
+    const reset = () => {
+        if (selectRef.current){
+            selectRef.current.value = undefined as any
+        }
+    }
+
+    useEffect(() => {
+        if (!selectedAsset){
+            reset()
+        }
+    }, [selectedAsset])
+
 
     return (
         <div style={{display: 'flex', flexDirection: 'column'}}>
-            <span style={{fontSize: 11, marginBottom: 3}}>ASSET:</span>
+            <span style={{fontSize: size * 11, marginBottom: size * 3}}>ASSET:</span>
             <select 
+                ref={selectRef}
                 defaultValue={undefined}
                 onChange={({ target: { value } }) => {
-                    props.onChangeAsset(set.get().assets().findByAddress(value) as AssetModel)
+                    props.onChangeAsset(assets.findByAddress(value) as AssetModel)
                 }}
-                style={{width: '100%', height: 30, outline: 'none', backgroundColor: BLACK, color: 'white'}}>
+                style={{width: '100%', height: size * 30, outline: 'none', backgroundColor: BLACK, color: 'white', fontSize:13 * size}}>
                 {!selectedAsset && <option value={undefined}></option>}
-                {set.get().assets().filter((a: AssetModel) => !dataType || a.get().ressource().get().dataType() === dataType).map((asset: AssetModel) => {
+                {assets.map((asset: AssetModel) => {
                     const ressource = asset.get().ressource()
                     const label = ressource.get().dependencies().length > 0 ? asset.get().address().get().printableID() : ressource.get().label()
                     return (
@@ -35,7 +52,7 @@ const SelectAsset = (props: IProps) => {
                     )
                 })}
             </select>
-            {selectedAsset && <span style={{fontSize: 11.5, fontStyle: 'italic', marginTop: 5}}>
+            {selectedAsset && <span style={{fontSize: size * 11.5, fontStyle: 'italic', marginTop: size * 5}}>
                 {selectedAsset.get().ressource().get().description()}
             </span>}
         </div>

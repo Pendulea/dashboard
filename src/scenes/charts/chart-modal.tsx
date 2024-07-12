@@ -1,17 +1,18 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import Modal from '../../components/modal';
 import DropdownAlert from '../../components/dropdown-alert';
 import UnitChart, { QuantityCategory } from './unit-chart';
 import { UnitCollection } from '../../models/tick/unit';
 import { IChartApi, ISeriesApi, LogicalRange, MouseEventParams, Time } from 'lightweight-charts';
-import { AssetModel } from '../../models/asset';
+import { AssetCollection, AssetModel } from '../../models/asset';
 import SelectSet from '../../components/select-set';
 import SelectAsset from '../../components/select-asset';
 import sets, { SetModel } from '../../models/set';
 import Button from '../../components/button';
 import { TickCollection } from '../../models/tick';
 import { showAlertMessage } from '../../constants/msg';
+import { UnitChartRefType } from './interfaces';
 
 interface ChartModalProps {
     onClose: () => void;
@@ -22,7 +23,11 @@ interface ChartModalProps {
 const TIMEFRAME = 86400 * 1000
 
 
-type ChartType = 'unit'
+type ChartTypeCategory = 'unit' 
+
+const buildChartType = (category: ChartTypeCategory, idx: number): string => {
+  return `${category}-${idx}`  
+}
 
 const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) => {
     if (!show) return null
@@ -33,31 +38,83 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
 
     const [selectedSet, setSelectedSet] = useState<SetModel | null>(null)
     const [selectedAsset, setSelectedAsset] = useState<AssetModel | null>(null)
+    const chartRefs = useRef<{[key in string]: UnitChartRefType}>({})
 
-    
-    const childRefs: {[key in ChartType]: React.RefObject<{chart: IChartApi, serie: ISeriesApi<any>}>} = {
-      'unit': useRef<{chart: IChartApi, serie: ISeriesApi<any>}>(null),
-      // 'rsi': useRef<{chart: IChartApi, serie: ISeriesApi<any>}>(null),
-      // 'volatility': useRef<{chart: IChartApi, serie: ISeriesApi<any>}>(null),
+    const getChartRefs = (): {[key in string]: UnitChartRefType} => {
+        return chartRefs.current
     }
-    
+
+    const getChartRef = (category: ChartTypeCategory, idx: number) => {
+        return getChartRefs()[buildChartType(category, idx)] as UnitChartRefType
+    }
+  
+    const getConcernedAssets = ():AssetModel[] => {
+      const ret: AssetModel[] = []
+      for (const key in getChartRefs()){ 
+        const ref = getChartRefs()[key]
+        if (!ref)
+            continue
+          ret.push(...ref.assets())
+      }
+      return ret
+    }
+
+    const onRefreshConcernedAssets = () => {
+      const assets = getConcernedAssets()
+      const maxLimit = new AssetCollection(assets, undefined).findMaxTicksCount()
+      const promises = assets.map((asset) => {
+          return asset.fetchTicks(TIMEFRAME, maxLimit)
+      })
+      const ret = Promise.all(promises)
+      ret.then((res) => {
+          for (const err of res){
+              if (typeof err === 'string'){
+                  showAlertMessage(dropdownRef).error(err)
+                  return
+              }
+          }
+      })
+    }
+
+    const addChart = async () => {
+      if (selectedAsset){
+        setChartList([...chartList, [selectedAsset]])
+        setSelectedAsset(null)
+        setSelectedSet(null)
+        const err = await selectedAsset.fetchTicks(TIMEFRAME)
+        if (typeof err === 'string'){
+          showAlertMessage(dropdownRef).error(err)
+        }
+        onRefreshConcernedAssets()
+      }
+    } 
+
+
     const renderCloseBtn = () => {
         return (
-            <div onClick={onClose} style={{cursor: 'pointer', position: 'fixed', top: 10, left: 10}}>
-                <img style={{width: 16, height: 16}} src={'/images/cross-white.png'}/>
+            <div onClick={onClose} style={{cursor: 'pointer', display: 'flex', flexDirection:'row', width: '100%'}}>
+                <img style={{width: 16, height: 16, padding: 10}} src={'/images/cross-white.png'}/>
             </div>
         )
     }
 
-    const onChangeLogicRange = (range: LogicalRange, chartType: ChartType) => {
-      for (const key in childRefs){
+    const onChangeLogicRange = (range: LogicalRange, cat: ChartTypeCategory, idx: number) => {
+      const chartType = buildChartType(cat, idx)
+      for (const key in getChartRefs()){
           if (key !== chartType){
-              childRefs[key as ChartType].current?.chart.timeScale().setVisibleLogicalRange(range)
+              const ref = getChartRefs()[key]
+              if (!ref)
+                  continue
+              ref.chart.timeScale().setVisibleLogicalRange(range)
           }
+      }
+      if (range.from < 10) {
+          fetchMore()
       }
   }
 
-  const onCrossHairMove = (e: MouseEventParams<Time>, chartType: ChartType) => {
+  const onCrossHairMove = (e: MouseEventParams<Time>, cat: ChartTypeCategory, idx: number) => {
+    const chartType = buildChartType(cat, idx)
 
       function getCrosshairDataPoint(series: any, param: any) {
           if (!param.time) {
@@ -66,13 +123,20 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
           const dataPoint = param.seriesData.get(series);
           return dataPoint || null;
       }
-      
-      const dp = getCrosshairDataPoint(childRefs[chartType].current?.serie, e)
+
+      const ref = getChartRef(cat, idx)
+      if (!ref)
+          return
+
+      const dp = getCrosshairDataPoint(ref.serie, e)
       if (dp){
-          for (const key in childRefs){ 
-              const chart = childRefs[key as ChartType].current?.chart
-              const serie = childRefs[key as ChartType].current?.serie
-              if (key !== chartType && chart && serie){
+          for (const key in getChartRefs()){ 
+            const ref = getChartRefs()[key]
+            if (!ref)
+                continue
+              const chart = ref.chart
+              const serie = ref.serie
+              if (chart && serie){
                   chart.setCrosshairPosition(dp.value, dp.time, serie)
               }
           }
@@ -95,34 +159,24 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
         </div>
         <div style={{width: '25%', marginLeft: 20}}>
           {selectedSet && <SelectAsset 
-            set={selectedSet || undefined} 
-            dataType={1}
+            assets={selectedSet.get().assets().filterByDataType(1)}
             onChangeAsset={(asset) => setSelectedAsset(asset)} 
             selectedAsset={selectedAsset || undefined} />}
-        </div >
+        </div>
         {selectedAsset && <Button 
-          color={'green'}
+          color={'blue'}
           title={'Add chart'}
           style={{width: 100, height: 30, marginTop: 19, marginLeft:20}}
-          onClick={ async () => {
-            setChartList([...chartList, [selectedAsset]])
-            setSelectedAsset(null)
-            const err = await selectedAsset.fetchTicks(TIMEFRAME)
-            if (typeof err === 'string'){
-              showAlertMessage(dropdownRef).error(err)
-            }
-          }}
+          onClick={addChart}
         />}
       </div>
     )
   }
 
     const fetchMore = async () => { 
-      const ret: Promise<string | TickCollection | null>[] = []
-      for (const chart of chartList){
-          for (const asset of chart){
-              ret.push(asset.fetchTicks(TIMEFRAME))
-          }
+      const ret: Promise<TickCollection |string>[] = []
+      for (const asset of getConcernedAssets()){
+            ret.push(asset.fetchTicks(TIMEFRAME))
       }
 
       const list = await Promise.all(ret)
@@ -134,19 +188,21 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
       }
   }
 
-    const renderPriceChart = (ticks?: UnitCollection) => {
-        const CHART_KEY = 'unit'
+    const renderPriceChart = (asset: AssetModel, idx: number) => {
+      const CHART_KEY = 'unit'
+
       return (
         <div style={{width: '90%'}}>
             <UnitChart 
-                unitTicks={ticks ? ticks : new UnitCollection([])}
-                onFetchMore={fetchMore}
-                ref={childRefs[CHART_KEY]}
-                onChangeLogicRange={(range) => onChangeLogicRange(range, CHART_KEY)}
-                onChangeCrossHair={(e) => onCrossHairMove(e, CHART_KEY)}
+                unit={asset}
+                timeframe={TIMEFRAME}
+                ref={(ref) => chartRefs.current[buildChartType(CHART_KEY, idx)] = ref}
+                onChangeLogicRange={(range) => onChangeLogicRange(range, CHART_KEY, idx)}
+                onChangeCrossHair={(e) => onCrossHairMove(e, CHART_KEY, idx )}
                 selectedTime={selectedTime}
                 displayTimeScale={true}
                 quantityCategory={quantityCategory}
+                onRefreshAssets={onRefreshConcernedAssets}
             />
         </div>
       )
@@ -155,15 +211,15 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
   return (
     <Modal onClose={onClose}>
       <ModalWrapper>
-        {renderSelectAsset()}
-        {chartList.map((chart, idx) => {
+      {renderCloseBtn()}
+      {chartList.map((chart, idx) => {
           return (
             <div key={idx} style={{display: 'flex', flexDirection: 'row', width: '100%', marginTop: 20}}>
-              {renderPriceChart(chart[0].get().ticks() as UnitCollection)}
+              {renderPriceChart(chart[0], idx)}
             </div>
           )
         })}
-        {renderCloseBtn()}
+        {renderSelectAsset()}
       </ModalWrapper>
     </Modal>
   );

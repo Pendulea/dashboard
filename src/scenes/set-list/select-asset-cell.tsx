@@ -74,7 +74,7 @@ const SelectAddressCell = (props: IPropsSelectAddressCell) => {
             </div>
             {selectedSet && <div style={{width: '40%', marginLeft: 30}}>
                 <SelectAsset 
-                    set={selectedSet} 
+                    assets={selectedSet.get().assets()} 
                     onChangeAsset={onChangeAsset} 
                     selectedAsset={selectedAsset}
                 />
