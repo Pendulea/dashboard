@@ -122,7 +122,6 @@ export class SetCollection extends Collection {
         super(models, [SetModel, SetCollection], options)
     }
 
-
     assetsByAddresses = (addresses: string[]) => {
         const formated = _.uniq(addresses)
         let assets: AssetModel[] = []
@@ -164,10 +163,27 @@ export class SetCollection extends Collection {
     refresh = async () => {
         try {
             const data = await service.request('GetSetList', {}) as { set_list: ISet[] } 
-            this.setState([])
-            data.set_list.forEach((set) => {
-                this.push(set)
-            })
+            for (const set of data.set_list){
+                const idString = set.settings.id.join('').toLowerCase()
+                const existing = this.findByID(idString)
+                if (!existing){
+                    this.push(set)
+                    continue
+                }
+                existing.setState({
+                    size: set.size,
+                    type: set.type,
+                    settings: new SetSettingsModel(set.settings, existing.kids())
+                })
+                set.assets.forEach((assetJSON) => {
+                    const asset = existing.get().assets().findByAddress(assetJSON.address_string)
+                    if (!asset){
+                        existing.get().assets().push(assetJSON)
+                        return
+                    }
+                    asset.updateState(assetJSON)
+                })
+            }
             this.action().save()
             return null
         } catch (e: any){

@@ -14,7 +14,7 @@ export interface IUnitData {
 
 export class UnitModel {
 
-    constructor(private state: IUnitData) {
+    constructor(public state: IUnitData) {
     }
 
     get = () => {
@@ -40,6 +40,17 @@ export class UnitCollection {
     get = (time: number) => {
         return this._map.get(time)
     }
+
+
+    averageTimeGap = () => {
+        if (this.state.length < 2){
+            return 0
+        }
+        const first = this.first() as UnitModel
+        const last = this.state[this.state.length - 1]
+        return (last.get().time() - first.get().time()) / this.state.length
+    }
+
 
     first = () => this.state[0] as UnitModel | undefined
 

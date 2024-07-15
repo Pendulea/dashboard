@@ -1,3 +1,5 @@
+import { tickStep } from "d3"
+
 export interface IPointData {
     v: number
     time: number
@@ -5,7 +7,7 @@ export interface IPointData {
 
 export class PointModel {
 
-    constructor(private state: IPointData) {}
+    constructor(public state: IPointData) {}
 
     get = () => {
         return {
@@ -23,6 +25,16 @@ export class PointCollection {
 
     get = (time: number) => {
         return this._map.get(time)
+    }
+
+    averageTimeGap = () => {
+        if (this.state.length < 2){
+            return 0
+        }
+
+        const first = this.first() as PointModel
+        const last = this.state[this.state.length - 1]
+        return (last.get().time() - first.get().time()) / this.state.length
     }
 
     first = () => this.state[0] as PointModel | undefined

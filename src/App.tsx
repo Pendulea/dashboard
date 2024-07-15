@@ -12,8 +12,6 @@ interface IProps {
   children: React.ReactNode
 }
 
-
-
 const Wrapper = (props: IProps) => {
 
   const dropdownRef = useRef<DropdownAlert>(null);
@@ -84,7 +82,6 @@ function App() {
   return (
     <Routes>
        <Route path='/' element={<Wrapper><SetListScene /></Wrapper>} />
-       <Route path='/chart' element={<Wrapper><div /></Wrapper>} />
      </Routes>
   )
 }

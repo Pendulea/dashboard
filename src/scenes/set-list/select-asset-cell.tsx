@@ -6,6 +6,7 @@ import TimeframeCell from "./timeframe-cell"
 import Checkbox from "../../components/checkbox"
 import SelectSet from "../../components/select-set"
 import SelectAsset from "../../components/select-asset"
+import SelectColumns from "../../components/select-columns"
 
 
 export type UnpackedOrder = string[] | null
@@ -26,7 +27,6 @@ const SelectAddressCell = (props: IPropsSelectAddressCell) => {
         setSelectedAsset(set.get().assets().first() as AssetModel)
         setSelectedColumns(DEFAULT_COLUMNS)
         props.onUpdateOrder(formatOrder(set.get().assets().first() as AssetModel, DEFAULT_COLUMNS))
-        
     }
 
     const onChangeAsset = (asset: AssetModel) => {
@@ -56,12 +56,6 @@ const SelectAddressCell = (props: IPropsSelectAddressCell) => {
         return ret
     }
 
-    const chunkedColumns = () => {
-        if (!selectedAsset)
-            return []
-        return _.chunk(selectedAsset.get().ressource().get().dataTypeColumns(), 3)
-    }
-
     return (
         <div>
         <div style={{display: 'flex', flexDirection:  'row', alignItems: 'flex-start'}}>
@@ -79,24 +73,12 @@ const SelectAddressCell = (props: IPropsSelectAddressCell) => {
                     selectedAsset={selectedAsset}
                 />
             </div>}
-            {selectedAsset && <div style={{width: '38%', display: 'flex', flexDirection: 'column', marginLeft: 20}}>
-                <span style={{fontSize: 11, marginLeft: 20, marginBottom: 3}}>COLUMNS:</span>
-                {chunkedColumns().map((columns: string[], idx) => {
-                    return <div key={'ccc'+idx} style={{display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', justifyContent: 'flex-end'}}>
-                        {columns.map((column: string, idx) => {
-                            return (
-                                <div key={column + idx} style={{width: '33%', display: 'flex', justifyContent: 'flex-end'}}>
-                                    <Checkbox 
-                                        label={column}
-                                        checked={selectedColumns.includes(column)}
-                                        onChange={(checked: boolean) => onChangeColumns(checked, column)}
-                                        size='medium'
-                                    />
-                                </div>
-                            )
-                        })}
-                    </div>
-                })}
+            {selectedAsset && <div style={{width: '38%', marginLeft: 20}}>
+                <SelectColumns 
+                    asset={selectedAsset} 
+                    onCheckColumn={onChangeColumns} 
+                    selectedColumns={selectedColumns}
+                />
             </div>}
         </div>
          <div style={{display: 'flex', justifyContent: 'flex-end', marginTop: 15}}>

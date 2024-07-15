@@ -11,6 +11,7 @@ export interface IAvailableAsset {
     argument_types: string[]
     label: string
     description: string
+    color: string
     data_type_name: string
     data_type_color: string
     data_type_columns: string[]
@@ -24,6 +25,7 @@ export const DEFAULT_AVAILABLE_ASSET: IAvailableAsset = {
     argument_types: [],
     label: '',
     description: '',
+    color: '',
     data_type_name: '',
     data_type_color: '',
     data_type_columns: [],
@@ -62,7 +64,8 @@ export class AvailableAssetModel extends Model {
             dataTypeName: (): string => this.state.data_type_name,
             dataTypeColor: (): string => this.state.data_type_color,
             dataTypeColumns: (): string[] => (this.state.data_type_columns || []).slice() ,
-            dataTypeDescription: (): string => this.state.data_type_description
+            dataTypeDescription: (): string => this.state.data_type_description,
+            color: (): string => this.state.color
         }
     }
 }

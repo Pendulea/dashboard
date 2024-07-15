@@ -8,7 +8,6 @@ import { IPointData, PointCollection } from '../tick/point'
 import { IUnitData, UnitCollection } from '../tick/unit'
 import { IQuantityData, QuantityCollection } from '../tick/quantity'
 import { TickCollection } from '../tick'
-import Loading from '../../components/loader'
 
 const TICK_FETCHING_LIMIT = 1000
 
@@ -41,8 +40,23 @@ export class AssetModel extends Model {
     resetTicks = () => {
         this._ticks = null
         this._done = false
-        this.setState({loading: false})
+        this.setState({fetching_ticks: false})
     }
+
+    averageTickTimeGap = () => {
+        if (!this._ticks){
+            return 0
+        }
+    }
+
+    minTickTime = () => {   
+        if (!this._ticks){
+            return Number.MAX_SAFE_INTEGER
+        }
+        return this._ticks.earliestTime()
+    }
+
+    hasMoreTicksToFetch = () => this._done === false
 
     constructor(state: IAsset = DEFAULT_ASSET, options: any){
         super({}, options)
@@ -53,13 +67,18 @@ export class AssetModel extends Model {
         }))
     }
 
-    fetchTicks = async (timeframe: number, limit: number = TICK_FETCHING_LIMIT): Promise<string | TickCollection> => {
-        if (this.isFetchingTicks() || this._done == true){
+    updateState = (state: IAsset) => {
+        this.setState(Object.assign({}, state, {
+            address: new AddressParsedModel(state.address, this.kids()),
+            consistencies: new ConsistencyCollection(state.consistencies, this.kids())
+        }))
+    }
+
+    fetchTicks = async (timeframe: number): Promise<string | TickCollection> => {
+        if (this.isFetchingTicks() || !this.hasMoreTicksToFetch()){
             return this._ticks as TickCollection || null
         }
-        if (this.get().ticksCount() === limit){
-            return this._ticks as TickCollection
-        }
+
         try {
             this.setState({fetching_ticks: true}).save()
             const res = await service.request('GetTicks', {
@@ -90,9 +109,6 @@ export class AssetModel extends Model {
             }
             this._ticks.add(res.list as any)
             this.setState({fetching_ticks: false}).save()
-            if (this._ticks.count() < limit){
-                return await this.fetchTicks(timeframe, limit) as string | TickCollection
-            }
             return this._ticks
         } catch (e: any) {
             this.setState({fetching_ticks: false})
@@ -134,6 +150,29 @@ export class AssetModel extends Model {
 export class AssetCollection extends Collection {
     constructor(state: (IAsset | AssetModel)[] = [], options: any){
         super(state, [AssetModel, AssetCollection], options)
+    }
+
+    minTickTime = () => {
+        let min = Number.MAX_SAFE_INTEGER
+        for (let i = 0; i < this.count(); i++){
+            const asset = this.nodeAt(i) as AssetModel
+            if (asset.get().ticksCount() > 0){
+                min = Math.min(min, asset.get().ticks()?.earliestTime() || 0)
+            }
+        }
+        if (min=== Number.MAX_SAFE_INTEGER){
+            return 0
+        }
+        return min
+    }
+
+    hasMoreTicksToFetch = () => {
+        for (let i = 0; i < this.count(); i++){
+            if ((this.nodeAt(i) as AssetModel).hasMoreTicksToFetch()){
+                return true
+            }
+        }
+        return false
     }
 
     findLeastMaxConsistency = (timeframe: number) => {

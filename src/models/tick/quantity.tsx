@@ -26,7 +26,7 @@ export interface IQuantityData {
 
 export class QuantityModel {
 
-    constructor(private state: IQuantityData) {}
+    constructor(public state: IQuantityData) {}
 
     get = () => {
         return {
@@ -52,6 +52,18 @@ export class QuantityCollection {
     get = (time: number) => {
         return this._map.get(time)
     }
+
+
+    averageTimeGap = () => {
+        if (this.state.length < 2){
+            return 0
+        }
+
+        const first = this.first() as QuantityModel
+        const last = this.state[this.state.length - 1]
+        return (last.get().time() - first.get().time()) / this.state.length
+    }
+
 
     first = () => this.state[0] as QuantityModel | undefined
 

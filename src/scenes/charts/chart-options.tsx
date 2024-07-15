@@ -9,7 +9,7 @@ export interface IChartOptions {
 }
 
 export default {
-    height: 320,
+    height: 250,
     layout: {
         background: {color: '#111111'},
         textColor: '#EEEEEE',

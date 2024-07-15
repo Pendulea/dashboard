@@ -15,7 +15,7 @@ export class Format {
         }
     }
 
-    static largeNumberToShortString(n: number): string {
+    static largeNumberToShortString(n: number, decimals?: number): string {
         const absN = Math.abs(n);
         let ret = "";
         if (absN >= 1_000_000_000) {
@@ -25,7 +25,7 @@ export class Format {
         } else if (absN >= 1_000) {
             ret= (absN / 1_000).toFixed(1) + "k";
         } else {
-            ret= absN.toString();
+            ret= absN.toFixed(decimals)
         }
         if (n < 0) {
             ret = "-" + ret;
@@ -119,4 +119,12 @@ export class Format {
         return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0));
     }
 
+    static stringToNumber(str:string) {
+        return str.split('').reduce((acc, char) => {
+            return acc + char.charCodeAt(0);
+        }, 0);
+    }
+    
+    
 }
+
