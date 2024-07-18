@@ -11,14 +11,11 @@
   },
   "dependencies": {
     "@ctrl/tinycolor": "^4.1.0",
-    "@floating-ui/react": "^0.26.19",
-    "@types/dc": "^4.2.5",
+    "@floating-ui/react-dom": "^2.1.1",
     "@types/lodash": "^4.17.4",
     "@types/react-datepicker": "^6.2.0",
     "acey": "^1.6.3",
-    "crossfilter2": "^1.5.4",
     "d3": "^7.9.0",
-    "dc": "^4.2.7",
     "lightweight-charts": "^4.1.4",
     "lightweight-charts-react-wrapper": "^2.1.1",
     "lodash": "^4.17.21",
@@ -27,7 +24,6 @@
     "react-acey": "^1.0.5",
     "react-datepicker": "^6.9.0",
     "react-dom": "^18.2.0",
-    "react-refs-collection": "^2.0.0",
     "react-router-dom": "^6.23.1",
     "react-select": "^5.8.0",
     "styled-components": "^6.1.11"
