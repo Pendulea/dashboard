@@ -4,15 +4,15 @@ import Modal from '../../components/modal';
 import DropdownAlert from '../../components/dropdown-alert';
 import UnitChart from './unit-chart';
 import { LogicalRange, MouseEventParams, Time } from 'lightweight-charts';
-import { AssetCollection, AssetModel } from '../../models/asset';
+import { AssetModel } from '../../models/asset';
 import sets, { SetModel } from '../../models/set';
-import { TickCollection } from '../../models/tick';
 import { showAlertMessage } from '../../constants/msg';
 import { UnitChartRefType } from './interfaces';
 import QuantityChart from './quantity-chart';
 import PointChart from './point-chart';
-import _, { set } from 'lodash';
+import _ from 'lodash';
 import AddAsset from './add-asset';
+import SmartTickFetcher from './smart-puller';
 
 interface ChartModalProps {
     onClose: () => void;
@@ -20,8 +20,8 @@ interface ChartModalProps {
     dropdownRef: React.RefObject<DropdownAlert>
 }
 
-const TIMEFRAME =  1000
-
+const TIMEFRAME =  60*5 * 1000
+const smartFetcher = new SmartTickFetcher(TIMEFRAME)
 
 type ChartTypeCategory = 'unit' | 'quantity'| 'point'
 
@@ -40,7 +40,7 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
     const [selectedTime, setSelectedTime] = useState<number | null>(null)
     const [chartList, setChartList] = useState<IChart[]>([])
 
-    const [selectedSetID, setSelectedSet] = useState<string>((sets.first()as SetModel).get().settings().get().idString())
+    const [selectedSetID, setSelectedSet] = useState<string>((sets.elem0() as SetModel).get().settings().get().idString())
     const [selectedAssetAddress, setSelectedAsset] = useState<string | null>(null)
     const [selectedColumn, setSelectedColumn] = useState<string>('')
     const [fetchCount, setFetchCount] = React.useState(0)
@@ -65,7 +65,7 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
         return getChartRefs()[buildChartType(category,  asset, column)] as UnitChartRefType
     }
   
-    const getConcernedAssets = (): AssetCollection => {
+    const getConcernedAssets = (): string[] => {
       const ret: string[] = []
       for (const key in getChartRefs()){ 
         const ref = getChartRefs()[key]
@@ -73,69 +73,19 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
             continue
           ret.push(...ref.assets())
       }
-      return sets.assetsByAddresses(_.uniq(ret))
+      return ret
     }
 
-    const fetchMore = _.debounce(async () => {
-      const assets = getConcernedAssets()
-      if (!assets.hasMoreTicksToFetch()){
-        return 
-      }
-      let minRequiredTime = assets.minTickTime()
-      minRequiredTime += 10 * TIMEFRAME
-      console.log(new Date(minRequiredTime))
-
-      const list = assets.map((asset: AssetModel) => {
-        const ticks = asset.get().ticks()
-
-        if (ticks && ticks.count() > 0) {
-          const min = asset.minTickTime()
-          const avgTimeGap = ticks.averageTimeGap()
-          
-          console.log(new Date(minRequiredTime), new Date(min + avgTimeGap * 1_000), asset.get().addressString(), avgTimeGap)
-
-          if (minRequiredTime < (min + avgTimeGap * 1_000)){
-            return asset.fetchTicks(TIMEFRAME)
-          }
-          return null
-        
-        } else {
-          return asset.fetchTicks(TIMEFRAME)
-        }
-      }).filter((x) => x !== null) as Promise<string | TickCollection>[]
-
-      if (list.length > 0){
-        const ret = await Promise.all(list)
-        for (const err of ret){
-          if (typeof err === 'string'){
-            showAlertMessage(dropdownRef).error(err)
-          }
-        }
-        setFetchCount((prev) => prev + 1)
-      }
-    }, 50)
-
     const onRefreshConcernedAssets = async () => {
-      const assets = getConcernedAssets()
-      let minRequiredTime = assets.minTickTime()
-      let pickedAssets = assets.filter((a:AssetModel) => a.get().ticks() === null || a.get().ticks()?.count() == 0) as AssetCollection
-
-      while (pickedAssets.count() > 0){
-        const list = pickedAssets.map((a:AssetModel) => a.fetchTicks(TIMEFRAME))
-        const ret = await Promise.all(list)
-        const err = ret.find((x) => typeof x === 'string')
-        if (err){
-          showAlertMessage(dropdownRef).error(err)
-          return
-        }
-        pickedAssets = pickedAssets.filter((a:AssetModel) => {
-          const min = a.minTickTime()
-          const avgTimeGap = (a.get().ticks() as TickCollection).averageTimeGap()
-          return (min + avgTimeGap * 1_000) < minRequiredTime
-        }) as AssetCollection
+      getConcernedAssets().forEach((address) => {
+        smartFetcher.addAsset(address)
+      })
+        
+      const errors = await smartFetcher.fetch()
+      if (errors.length > 0){
+        showAlertMessage(dropdownRef).error(errors.join(', '))
       }
       setFetchCount((prev) => prev + 1)
-
     }
 
     const addChart = async () => {
@@ -151,13 +101,9 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
           }]
           return ret
         })
-
-        const err = await asset.fetchTicks(TIMEFRAME)
-        if (typeof err === 'string')
-          showAlertMessage(dropdownRef).error(err)
         
         setSelectedAsset(null)
-        onRefreshConcernedAssets()
+        setTimeout(onRefreshConcernedAssets, 10)
       }
     } 
 
@@ -181,7 +127,7 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
           }
       }
       if (range.from < 10) {
-          fetchMore()
+          onRefreshConcernedAssets()
       }
   }
 
@@ -304,6 +250,7 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
                 setSelectedAsset(asset ? asset.get().addressString() : null)
                 setSelectedColumn(column || '')
             }}
+            timeframe={TIMEFRAME}
             onSubmit={addChart}
             style={{marginTop: chartList.length > 0 ? 40 : 0}}
           />

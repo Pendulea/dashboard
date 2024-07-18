@@ -20,6 +20,11 @@ export class ConsistencyModel extends Model {
         super(state, options)
     }
 
+    hasStartedSync = () => {
+        const r = this.get().range()
+        return r[0] !== r[1]
+    }
+
     get = () => {
         return {
             range: (): number[] => this.state.range.slice(),

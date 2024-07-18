@@ -6,6 +6,7 @@ import React from "react"
 interface IProps {
     sets: SetCollection
     onChangeSet: (set: SetModel) => void
+    timeframe: number
     selectedSet?: SetModel
     size?: number
 }
@@ -27,7 +28,7 @@ const SelectSet = (props: IProps) => {
         if (!selectedSet){
             reset()
             if (sets.count() > 0){
-                onChangeSet(sets.first() as SetModel)
+                onChangeSet(sets.elem0())
             }
         }
     }, [selectedSet])
@@ -35,7 +36,7 @@ const SelectSet = (props: IProps) => {
 
     useEffect(() => {
         if (!selectedSet && sets.count() > 0){
-            onChangeSet(sets.first() as SetModel)
+            onChangeSet(sets.elem0())
         }
     }, [])
 
@@ -50,7 +51,7 @@ const SelectSet = (props: IProps) => {
                 }}
                 style={{width: '100%', height: size * 30, outline: 'none', backgroundColor: BLACK, color: 'white', fontSize: 13 * size}}>
                 {!selectedSet && <option value={undefined}></option>}
-                {sets.map((set: SetModel) => {
+                {sets.orderByRank().map((set: SetModel) => {
                     const id = set.get().settings().get().id()
                     return (
                         <option 

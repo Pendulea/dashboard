@@ -8,8 +8,8 @@ import { IPointData, PointCollection } from '../tick/point'
 import { IUnitData, UnitCollection } from '../tick/unit'
 import { IQuantityData, QuantityCollection } from '../tick/quantity'
 import { TickCollection } from '../tick'
-
-const TICK_FETCHING_LIMIT = 1000
+import SmartTickFetcher from '../../scenes/charts/smart-puller'
+import { DATA_DELAY_TOLERANCE } from '../../constants'
 
 
 export interface IAsset {
@@ -37,26 +37,40 @@ export class AssetModel extends Model {
     private _ticks: TickCollection | null = null
     private _done: boolean = false
     
+    isLateUnsynced = (timeframe: number) => {
+        const extraSec = Date.now() % 86_400_000
+        const maxDayConsistency = Date.now() - this.get().consistencyMaxLookbackDays() * 86_400_000 - extraSec
+
+        const consistency = this.get().consistencies().findByTimeframe(timeframe)
+        if (!consistency || !consistency.hasStartedSync()){
+            return -1
+        }
+        const maxRange = consistency.get().range()[1]
+        if (maxRange > (maxDayConsistency - DATA_DELAY_TOLERANCE))
+            return null
+        return maxRange - (maxDayConsistency - DATA_DELAY_TOLERANCE)
+    }
+
     resetTicks = () => {
         this._ticks = null
         this._done = false
         this.setState({fetching_ticks: false})
     }
 
-    averageTickTimeGap = () => {
-        if (!this._ticks){
-            return 0
-        }
-    }
-
-    minTickTime = () => {   
-        if (!this._ticks){
-            return Number.MAX_SAFE_INTEGER
-        }
-        return this._ticks.earliestTime()
-    }
-
     hasMoreTicksToFetch = () => this._done === false
+
+    earliestTickTime = (timeframe:number) => {
+        const ticks = this.get().ticks()
+        if (!ticks){
+            const c = this.get().consistencies().findByTimeframe(timeframe)
+            if (c && c.hasStartedSync()){
+                return c.get().range()[1]
+            }
+        } else {
+            return ticks.earliestTime()
+        }
+        return -1
+    }
 
     constructor(state: IAsset = DEFAULT_ASSET, options: any){
         super({}, options)
@@ -74,21 +88,44 @@ export class AssetModel extends Model {
         }))
     }
 
-    fetchTicks = async (timeframe: number): Promise<string | TickCollection> => {
+    fetchTicks = async (timeframe: number, toTime: number): Promise<string | null | TickCollection> => {
         if (this.isFetchingTicks() || !this.hasMoreTicksToFetch()){
-            return this._ticks as TickCollection || null
+            return null
         }
+
+        const c = this.get().consistencies().findByTimeframe(timeframe)
+        if (!c){
+            return 'no consistency found'
+        }
+         
+        const isFirstFetch = this.get().ticksCount() === 0
+
+        if (!isFirstFetch && toTime <= c.get().range()[0]){
+            this._done = true
+            return null
+        }
+
+        const fromTime = SmartTickFetcher.calculateFromTime(toTime, timeframe)
+        if (this.earliestTickTime(timeframe) < fromTime){
+            return null
+        }
+
 
         try {
             this.setState({fetching_ticks: true}).save()
             const res = await service.request('GetTicks', {
                 address: this.get().addressString(),
                 timeframe,
-                offset_unix_time: !this._ticks ? Date.now() : this._ticks.earliestTime(),
+                to_time: isFirstFetch ? Date.now() : toTime,
+                from_time: fromTime
             }) as {
                 data_type: number,
                 list: (IPointData | IUnitData | IQuantityData)[]
             }
+            //in case the asset has been reset while fetching
+            if (!this.isFetchingTicks())
+                return null
+
             if (!this._ticks){
                 switch (res.data_type){
                     case 1:
@@ -101,12 +138,10 @@ export class AssetModel extends Model {
                         this._ticks = new PointCollection([])
                         break
                     default:
-                        throw new Error('Unknown data type')
+                        throw new Error('unknown data type')
                 }
-            } 
-            if (res.list.length < TICK_FETCHING_LIMIT){
-                this._done = true
             }
+            
             this._ticks.add(res.list as any)
             this.setState({fetching_ticks: false}).save()
             return this._ticks
@@ -148,71 +183,30 @@ export class AssetModel extends Model {
 }
 
 export class AssetCollection extends Collection {
+
     constructor(state: (IAsset | AssetModel)[] = [], options: any){
         super(state, [AssetModel, AssetCollection], options)
     }
 
-    minTickTime = () => {
-        let min = Number.MAX_SAFE_INTEGER
-        for (let i = 0; i < this.count(); i++){
-            const asset = this.nodeAt(i) as AssetModel
-            if (asset.get().ticksCount() > 0){
-                min = Math.min(min, asset.get().ticks()?.earliestTime() || 0)
+    filterByStartedSync = (timeframe: number) => {
+        return this.filter((asset: AssetModel) => {
+            const c = asset.get().consistencies().findByTimeframe(timeframe)
+            return c && c.hasStartedSync()
+        }) as AssetCollection
+    }
+
+    findMaxConsistency = (timeframe: number) => {
+        let min = 0
+        this.forEach((asset: AssetModel) => {
+            const c = asset.get().consistencies().findByTimeframe(timeframe)
+            if (c && c.hasStartedSync()){
+                const range = c.get().range()
+                if (range[1] > min){
+                    min = range[1]
+                }
             }
-        }
-        if (min=== Number.MAX_SAFE_INTEGER){
-            return 0
-        }
+        })
         return min
-    }
-
-    hasMoreTicksToFetch = () => {
-        for (let i = 0; i < this.count(); i++){
-            if ((this.nodeAt(i) as AssetModel).hasMoreTicksToFetch()){
-                return true
-            }
-        }
-        return false
-    }
-
-    findLeastMaxConsistency = (timeframe: number) => {
-        let min = '9999-12-31'
-
-        for (let i = 0; i < this.count(); i++){
-            const asset = this.nodeAt(i) as AssetModel
-            const consistency = asset.get().consistencies().findByTimeframe(timeframe)
-            if (!consistency){
-                return null
-            }
-            if (consistency.get().range()[1] > consistency.get().range()[0]){
-                const d = Format.unixTimestampToStrDate(new Date(consistency.get().range()[1]))
-                if (d < min){
-                    min = d
-                } 
-            } else {
-                return null
-            }
-        }
-        if (min === '9999-12-31'){
-            return null
-        }
-        return min
-    }
-
-    findMaxTicksCount = () => {
-        let max = 0
-
-        for (let i = 0; i < this.count(); i++){
-            const asset = this.nodeAt(i) as AssetModel
-            const count = asset.get().ticksCount()
-            if (count > max){
-                max = count
-            }
-        }
-        if (max % TICK_FETCHING_LIMIT === 0){
-            return max
-        }
-        return max + (TICK_FETCHING_LIMIT - (max % TICK_FETCHING_LIMIT))
     }
 
     findMinHistoricalDate = () => {
@@ -232,6 +226,12 @@ export class AssetCollection extends Collection {
             return null
         }
         return min
+    }
+
+    filterLateUnsynced = (timeframe: number) => {
+        return this.filter((asset: AssetModel) => {
+            return asset.isLateUnsynced(timeframe) !== null
+        }) as AssetCollection
     }
     
     findByAddress = (address: string) => {

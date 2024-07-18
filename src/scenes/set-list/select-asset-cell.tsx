@@ -13,20 +13,22 @@ export type UnpackedOrder = string[] | null
 
 interface IPropsSelectAddressCell { 
     onUpdateOrder: (output: UnpackedOrder) => void
+    timeframe: number
 }
 const SelectAddressCell = (props: IPropsSelectAddressCell) => {
 
     const DEFAULT_COLUMNS = ['time']
 
-    const [selectedSet, setSelectedSet] = React.useState<SetModel>(sets.first() as SetModel)
-    const [selectedAsset, setSelectedAsset] = React.useState<AssetModel>(selectedSet.get().assets().first() as AssetModel)
+    const [selectedSet, setSelectedSet] = React.useState<SetModel>(sets.elem0())
+    const [selectedAsset, setSelectedAsset] = React.useState<AssetModel | undefined>(selectedSet.get().firstAsset())
     const [selectedColumns, setSelectedColumns] = React.useState<string[]>(DEFAULT_COLUMNS)
 
     const onChangeSet = (set: SetModel) => {
+        const firstAsset = set.get().firstAsset() 
         setSelectedSet(set)
-        setSelectedAsset(set.get().assets().first() as AssetModel)
+        setSelectedAsset(firstAsset)
         setSelectedColumns(DEFAULT_COLUMNS)
-        props.onUpdateOrder(formatOrder(set.get().assets().first() as AssetModel, DEFAULT_COLUMNS))
+        firstAsset && props.onUpdateOrder(formatOrder(firstAsset, DEFAULT_COLUMNS))
     }
 
     const onChangeAsset = (asset: AssetModel) => {
@@ -36,7 +38,7 @@ const SelectAddressCell = (props: IPropsSelectAddressCell) => {
     }
 
     const onChangeColumns = (checked: boolean, column: string) => {
-        if (column !== 'time'){
+        if (column !== 'time' && selectedAsset){
             if (checked){
                 setSelectedColumns([...selectedColumns, column])
                 props.onUpdateOrder(formatOrder(selectedAsset, [...selectedColumns, column]))
@@ -64,6 +66,7 @@ const SelectAddressCell = (props: IPropsSelectAddressCell) => {
                     sets={sets} 
                     onChangeSet={onChangeSet} 
                     selectedSet={selectedSet}
+                    timeframe={props.timeframe}
                 />
             </div>
             {selectedSet && <div style={{width: '40%', marginLeft: 30}}>
@@ -71,6 +74,7 @@ const SelectAddressCell = (props: IPropsSelectAddressCell) => {
                     assets={selectedSet.get().assets()} 
                     onChangeAsset={onChangeAsset} 
                     selectedAsset={selectedAsset}
+                    timeframe={props.timeframe}
                 />
             </div>}
             {selectedAsset && <div style={{width: '38%', marginLeft: 20}}>

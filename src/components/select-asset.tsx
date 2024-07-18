@@ -7,6 +7,7 @@ import React from "react"
 interface IProps {
     assets: AssetCollection
     onChangeAsset: (asset: AssetModel) => void
+    timeframe: number
     selectedAsset?: AssetModel
     size?: number
 }
@@ -29,6 +30,7 @@ const SelectAsset = (props: IProps) => {
         }
     }, [selectedAsset])
 
+    const assetList = assets.filterByStartedSync(props.timeframe)
 
     return (
         <div style={{display: 'flex', flexDirection: 'column'}}>
@@ -41,7 +43,7 @@ const SelectAsset = (props: IProps) => {
                 }}
                 style={{width: '100%', height: size * 30, outline: 'none', backgroundColor: BLACK, color: 'white', fontSize:13 * size}}>
                 {!selectedAsset && <option value={undefined}></option>}
-                {assets.map((asset: AssetModel) => {
+                {assetList.orderByAddressAsc().map((asset: AssetModel) => {
                     const ressource = asset.get().ressource()
                     const label = ressource.get().dependencies().length > 0 ? asset.get().address().get().printableID() : ressource.get().label()
                     return (

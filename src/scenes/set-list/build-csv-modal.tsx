@@ -33,10 +33,9 @@ const BuildCSVModal: React.FC<BuildCSVModalProps> = ({ onClose, dropdownRef, sho
     const [endDate, setEndDate] = useState(new Date(0))
     const [loading, setLoading] = useState(false)
 
-
     useEffect(() => {
         const from = minFrom()
-        const to = minTo()
+        const to = maxTo()
         if (!from || !to){
             setStartDate(new Date(0))
             setEndDate(new Date(0))
@@ -56,7 +55,6 @@ const BuildCSVModal: React.FC<BuildCSVModalProps> = ({ onClose, dropdownRef, sho
         const cpy = _.cloneDeep(orders)
         cpy[idx] = order
         setOrders(cpy)
-        console.log(cpy)
     }
 
     const onSubmit = async () => {
@@ -82,11 +80,12 @@ const BuildCSVModal: React.FC<BuildCSVModalProps> = ({ onClose, dropdownRef, sho
             return null
         return sets.assetsByAddresses(filtered.map(o => o[0])).findMinHistoricalDate()
     }
-    const minTo = () => {
+
+    const maxTo = () => {
         const filtered = orders.filter((o) => o !== null) as string[][]
         if (filtered.length == 0)
             return null
-        return sets.assetsByAddresses(filtered.map(o => o[0])).findLeastMaxConsistency(selectedTimeframe)
+        return Format.unixTimestampToStrDate(new Date(sets.assetsByAddresses(filtered.map(o => o[0])).findMaxConsistency(selectedTimeframe)))
     }
 
     const listSetIDs = () => {
@@ -104,7 +103,7 @@ const BuildCSVModal: React.FC<BuildCSVModalProps> = ({ onClose, dropdownRef, sho
 
     const setIDs = listSetIDs()
     const minDate = minFrom()
-    const maxDate = minTo()
+    const maxDate = maxTo()
 
     const renderMinDateInput = () => (
         <div style={{ display: 'flex', flexDirection: 'column'}}>
@@ -157,18 +156,18 @@ const BuildCSVModal: React.FC<BuildCSVModalProps> = ({ onClose, dropdownRef, sho
             <span style={{fontSize: 12}}>SELECT TIMEFRAME</span>
             <span style={{fontSize: 9.5, marginTop: 3}}>(PICK ONE IN THE {setIDs.length > 1 ? 'COMMON TIMEFRAMES AMONG ' : ''} <span style={{fontWeight: 800}}>{setIDs.join(', ').toUpperCase()}</span> {setIDs.length == 1 ? 'TIMEFRAMES' : ''})</span>
             <div style={{display: 'flex', flexDirection: 'row', marginTop: 10}}>
-                    {_.orderBy(listAvailableTimeframes()).map((timeframe: number, idx: number) => {
-                        return (
-                            <TimeframeCell 
-                                key={'rereggrg'+ idx}
-                                timeframe={timeframe} 
-                                big
-                                onClick={() => setSelectedTimeframe(timeframe)}
-                                selected={selectedTimeframe === timeframe}
-                                style={{marginLeft: idx > 0 ? 10 : 0}}
-                            /> 
-                        )
-                    })}
+                {_.orderBy(listAvailableTimeframes()).map((timeframe: number, idx: number) => {
+                    return (
+                        <TimeframeCell 
+                            key={'rereggrg'+ idx}
+                            timeframe={timeframe} 
+                            big
+                            onClick={() => setSelectedTimeframe(timeframe)}
+                            selected={selectedTimeframe === timeframe}
+                            style={{marginLeft: idx > 0 ? 10 : 0}}
+                        /> 
+                    )
+                })}
             </div>
         </div>
     )
@@ -201,7 +200,10 @@ const BuildCSVModal: React.FC<BuildCSVModalProps> = ({ onClose, dropdownRef, sho
                                     />}
                                 </div>
                             </div>
-                            <SelectAddressCell onUpdateOrder={(order) => onUpdateOrder(order, idx)} />
+                            <SelectAddressCell 
+                                onUpdateOrder={(order) => onUpdateOrder(order, idx)} 
+                                timeframe={selectedTimeframe}
+                            />
                         </div>
                     )
                 })}                

@@ -6,6 +6,8 @@ import Select from 'react-select';
 import { customStyles } from './select-style';
 import cryptoList from '../../constants/crypto-list';
 import sets, { SetModel } from '../../models/set';
+import Button from '../../components/button';
+import { showAlertMessage } from '../../constants/msg';
 
 interface AddPairModalProps {
     onClose: () => void;
@@ -16,7 +18,20 @@ interface AddPairModalProps {
 const AddPairModal: React.FC<AddPairModalProps> = ({ onClose, dropdownRef, show }) => {
     if (!show) return null
 
+    const [loading, setLoading] = React.useState<boolean>(false)
     const [tokenA, setTokenA] = React.useState<string>('')
+
+    const onAdd = async () => {
+        setLoading(true)
+        const err = await sets.addSet(tokenA.toUpperCase())
+        setLoading(false)
+        if (err){
+            showAlertMessage(dropdownRef).error(err)
+        } else {
+            onClose()
+        }
+    }
+
 
     const takenSymbolList = sets.map((set: SetModel) => set.get().settings().get().id()[0].toUpperCase()) as string[]
 
@@ -66,6 +81,15 @@ const AddPairModal: React.FC<AddPairModalProps> = ({ onClose, dropdownRef, show 
                 defaultValue={{value: 'USDT', label: 'USDT (Tether)'}}
             />
         </div>
+        <Button
+            color={'green'}
+            title={'Add'}
+            disabled={tokenA.length === 0}
+            style={{width: 150, height: 30, marginTop: 50, marginBottom: 20}}
+            onClick={onAdd}
+            loading={loading}
+        >
+        </Button>
       </ModalWrapper>
     </Modal>
   );

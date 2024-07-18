@@ -47,7 +47,7 @@ const Index = () => {
               menu === 'build-csv' && setShowBuildCSVModal(true)
               menu === 'view-chart' && setShowChartModal(true)
             }} />
-            {sets.map((set: SetModel) => {
+            {sets.orderByRank().map((set: SetModel) => {
                 const setID = set.get().settings().get().idString()
                 const timeframe = selectedTimeframe[setID]
                 return <div style={{width: '100%'}} key={set.get().size()}>

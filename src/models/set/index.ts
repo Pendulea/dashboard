@@ -88,6 +88,9 @@ export class SetModel extends Model {
             },
             icon: (): string => {
                 return this._crypto?.icon || ''
+            },
+            firstAsset: (): AssetModel | undefined => {
+                return this.get().assets().orderByAddressAsc().first() as AssetModel | undefined
             }
         }
     }
@@ -114,12 +117,36 @@ export class SetModel extends Model {
         }
     }
 
+    supportTimeframe = (timeframe: number) => {
+        return this.get().availableTimeframes().includes(timeframe)
+    }
 
 }
 
 export class SetCollection extends Collection {
     constructor(models: (ISet | SetModel)[] = [], options: any){
         super(models, [SetModel, SetCollection], options)
+    }
+
+    elem0 = (): SetModel  => {
+        return this.orderByRank().nodeAt(0) as SetModel 
+    }
+
+    findByPairA = (assetA: string) => {
+        return this.filter((set: SetModel) => {
+            return set.get().settings().get().id()[0].toUpperCase() === assetA.toUpperCase()
+        }) as SetCollection
+    }
+
+    orderByRank = () => {
+        const ret: SetModel[] = []
+        cryptoList.forEach((crypto) => {
+            const list = this.findByPairA(crypto.symbol)
+            if (!list.count())
+                return
+            ret.push(...list.state)
+        })
+        return new SetCollection(ret, {})
     }
 
     assetsByAddresses = (addresses: string[]) => {
@@ -147,6 +174,11 @@ export class SetCollection extends Collection {
         return refTimeframes
     }
 
+    filterBySupportingTimeframe = (timeframe: number) => {
+        return this.filter((set: SetModel) => {
+            return set.supportTimeframe(timeframe)
+        }) as SetCollection
+    }
 
     filterByIDs = (ids: string[]) => {
         return this.filter((set: SetModel) => {
@@ -158,6 +190,16 @@ export class SetCollection extends Collection {
         return this.find((set: SetModel) => {
             return set.get().settings().get().idString() === id
         }) as SetModel | undefined
+    }
+
+    addSet = async (symbol: string) => {
+        try { 
+            const res = await service.request('AddSet', {symbol: symbol}) as ISet 
+            this.push(res).save()
+            return null
+        } catch (e: any){
+            return e.toString() as string
+        }
     }
 
     refresh = async () => {

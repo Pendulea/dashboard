@@ -110,7 +110,7 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
 
     const [extraLines, setExtraLines] = React.useState<IExtraLine[]>([])
 
-    const [selectedSet, setSelectedSet] = React.useState<SetModel>(sets.first() as SetModel)
+    const [selectedSet, setSelectedSet] = React.useState<SetModel>(sets.elem0() as SetModel)
     const [selectedAsset, setSelectedAsset] = React.useState<null | AssetModel>(null)
     const [selectedColumn, setSelectedColumn] = React.useState<string | null>(null)
     const [isPercent, setIsPercent] = React.useState(false)
@@ -352,6 +352,7 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
                 selectedSet={selectedSet}
                 selectedAsset={selectedAsset}
                 selectedColumn={selectedColumn}
+                timeframe={timeframe}
                 onChange={(set, asset, column) => {
                     setSelectedSet(set)
                     setSelectedAsset(asset)

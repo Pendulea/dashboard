@@ -40,8 +40,13 @@ const SetCell = (props:IProps) => {
                   )
               }) as any[]
         }) as any[][]
-        const lastLine = ret[ret.length - 1]
-        if (lastLine.length == CHUNK) {
+        
+        if (ret.length !== 0){
+            const lastLine = ret[ret.length - 1]
+            if (lastLine.length == CHUNK) {
+                ret.push([])
+            }
+        } else {
             ret.push([])
         }
         ret[ret.length - 1].push(<div key={'add asset btn'} style={{width, display: 'flex', justifyContent: 'center'}}>

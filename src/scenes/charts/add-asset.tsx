@@ -13,6 +13,7 @@ interface IProps {
     onSubmit: () => void
     inline?: boolean,
     selectedSet: SetModel
+    timeframe: number
     selectedAsset: AssetModel | null
     selectedColumn: string | null
 }
@@ -20,7 +21,7 @@ interface IProps {
 const AddAsset = (props: IProps) => {
 
     const onChangeSet = (set: SetModel) => {
-        const firstAsset = !props.selectedAsset ? set.get().assets().first() as AssetModel : props.selectedAsset
+        const firstAsset = !props.selectedAsset ? (set.get().firstAsset() as AssetModel || null) : props.selectedAsset
         props.onChange(set, firstAsset, null)
     }
 
@@ -34,9 +35,10 @@ const AddAsset = (props: IProps) => {
 
     const renderSelectSet = () =>(
         <SelectSet 
-        sets={sets}   
-        onChangeSet={onChangeSet} 
-        selectedSet={props.selectedSet} 
+            sets={sets}   
+            onChangeSet={onChangeSet} 
+            selectedSet={props.selectedSet} 
+            timeframe={props.timeframe}
     />
     )
 
@@ -45,6 +47,7 @@ const AddAsset = (props: IProps) => {
             assets={props.selectedSet.get().assets()}
             onChangeAsset={onChangeAsset}
             selectedAsset={props.selectedAsset || undefined} 
+            timeframe={props.timeframe}
         />
     ) 
 
