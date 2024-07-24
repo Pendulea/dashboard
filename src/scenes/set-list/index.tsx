@@ -14,53 +14,62 @@ import BuildCSVModal from "./build-csv-modal"
 import ChartModal from "../charts/chart-modal"
 
 
+const SetList = (props: {onClickAddAsset: (setID: string)=> void}) => {
+
+  useAcey([
+    sets
+  ] as any)
+
+  const [selectedTimeframe, setSelectedTimeframe] = useState(Object.assign({}, ...sets.map((set: SetModel) => {
+      return {[set.get().settings().get().idString()]: set.get().availableTimeframes()[0]}
+  })))
+
+  const onSelectTimeframe = (set: SetModel, timeframe: number) => {
+    const cpy = _.cloneDeep(selectedTimeframe)
+    cpy[set.get().settings().get().idString()] = timeframe
+    setSelectedTimeframe(cpy)
+}
+
+  return (
+    <div>
+        {sets.orderByRank().map((set: SetModel) => {
+          const setID = set.get().settings().get().idString()
+          const timeframe = selectedTimeframe[setID]
+          return <div style={{width: '100%'}} key={'set' + setID}>
+              <SetCell 
+                  set={set}
+                  onSelectTimeframe={(timeframe: number) => onSelectTimeframe(set, timeframe)}
+                  timeframe={timeframe}
+                  onOpenAddAssetModal={() => props.onClickAddAsset(setID)}
+              />
+          </div>
+      })}
+    </div>
+  )
+}
+
 const Index = () => {
 
     const dropdownRef = useRef<DropdownAlert>(null);
-
-    const [selectedTimeframe, setSelectedTimeframe] = useState(Object.assign({}, ...sets.map((set: SetModel) => {
-        return {[set.get().settings().get().idString()]: set.get().availableTimeframes()[0]}
-    })))
 
     const [addAssetModal, setAddAssetModal] = useState<string|null>(null)
     const [addSetModal, setAddSetModal] = useState<boolean>(false)
     const [showBuildCSVModal, setShowBuildCSVModal] = useState<boolean>(false)
     const [showChartModal, setShowChartModal] = useState<boolean>(false)
 
-    useAcey([
-        appStatus,
-        sets
-    ] as any)
-
-    const onSelectTimeframe = (set: SetModel, timeframe: number) => {
-        const cpy = _.cloneDeep(selectedTimeframe)
-        cpy[set.get().settings().get().idString()] = timeframe
-        setSelectedTimeframe(cpy)
-    }
-
-
     return (
         <NoScrollWrapper lock={false} style={{width: '100%'}}>
           <div>
-            <Header status={appStatus} onClick={(menu) => {
+            <Header onClick={(menu) => {
               menu === 'add-pair' && setAddSetModal(true)
               menu === 'build-csv' && setShowBuildCSVModal(true)
               menu === 'view-chart' && setShowChartModal(true)
             }} />
-            {sets.orderByRank().map((set: SetModel) => {
-                const setID = set.get().settings().get().idString()
-                const timeframe = selectedTimeframe[setID]
-                return <div style={{width: '100%'}} key={set.get().size()}>
-                    <SetCell 
-                        set={set}
-                        onSelectTimeframe={(timeframe: number) => onSelectTimeframe(set, timeframe)}
-                        timeframe={timeframe}
-                        onOpenAddAssetModal={() => setAddAssetModal(setID)}
-                    />
-                </div>
-            })}
+            <SetList 
+              onClickAddAsset={(setID) => setAddAssetModal(setID)}
+            />
               <div style={{height: 35}}/>
-              <Footer status={appStatus}/>
+              <Footer />
           </div>
 
           <AddAssetModal 
@@ -83,19 +92,6 @@ const Index = () => {
             onClose={() => setShowChartModal(false)}
             dropdownRef={dropdownRef}
           />
-          {/* <AddPairModal
-            show={showAddPairModal}
-            onClose={() => setShowAddPairModal(false)}
-            onSubmit={addPair}
-          />
-          {selectedSet && <BuildCSVModal 
-            appStatus={appStatus}
-            set={selectedSet}
-            show={true}
-            onClose={() => setSelectedSet(null)}
-            dropdownRef={dropdownRef}
-            onClick={onBuildCSV}
-          />} */}
           <DropdownAlert ref={dropdownRef}/> 
       </NoScrollWrapper>
     )

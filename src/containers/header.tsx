@@ -1,25 +1,27 @@
 import React from "react";
-import { StatusModel } from "../models/status";
+import appStatus, { StatusModel } from "../models/status";
 import { Format } from "../utils";
 import Button from "../components/button";
 import { GOLD, GREEN, RED } from "../constants";
+import { useAcey } from "react-acey";
 
 export type T_MENU = 'add-pair' | 'build-csv' | 'view-chart'
 
 export interface IProps {
-    status: StatusModel
     onClick: (menu: T_MENU) => void
 }
 
 export const Header = (props: IProps) => {
 
-    const { status } = props
+    useAcey([
+      appStatus
+    ] as any)
 
-    if (status.get().cpuCount() === 0){
+    if (appStatus.get().cpuCount() === 0){
       return null
     }
-    const memory = status.get().availableMemory()
-    const disk = status.get().availableDiskSpace()
+    const memory = appStatus.get().availableMemory()
+    const disk = appStatus.get().availableDiskSpace()
 
     let memoryColor = GREEN
     if (memory < 800_000_000){
@@ -36,7 +38,7 @@ export const Header = (props: IProps) => {
     return (
       <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', color: 'white', width: '100%', backgroundColor: '#353535', height: 40, borderBottom :'1px solid white'}}>
             <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', marginLeft: 15}}>
-              <span style={{fontSize: 11, fontWeight: 500}}>FREE CPUs: <span style={{fontWeight: 800, fontSize: 13}}>{status.get().freeCpuCount()}</span></span>
+              <span style={{fontSize: 11, fontWeight: 500}}>FREE CPUs: <span style={{fontWeight: 800, fontSize: 13}}>{appStatus.get().freeCpuCount()}</span></span>
               <span style={{fontSize: 11, fontWeight: 500, marginLeft: 10, marginRight: 10}}> | </span>
               <span style={{fontSize: 11, fontWeight: 500}}>FREE MEMORY: <span style={{fontWeight: 800, fontSize: 13, color: memoryColor}}>{Format.largeBytesToShortString(memory).toUpperCase()}</span></span>
               {disk > 0 && <span style={{fontSize: 11, fontWeight: 500, marginLeft: 10, marginRight: 10}}> | </span>}

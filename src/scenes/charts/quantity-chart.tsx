@@ -1,5 +1,5 @@
 import { IChartApi, ISeriesApi, MouseEventParams } from "lightweight-charts"
-import {  useCallback, useImperativeHandle, useRef } from "react"
+import {  useCallback, useEffect, useImperativeHandle, useRef } from "react"
 import { Chart, HistogramSeries, TimeScale } from "lightweight-charts-react-wrapper"
 
 import options, {IChartOptions} from './chart-options'
@@ -8,9 +8,12 @@ import React from "react"
 import { AssetModel } from "../../models/asset"
 import { UnitChartRefType } from "./interfaces"
 import styled from "styled-components"
-import { QuantityCollection, QuantityModel } from "../../models/tick/quantity"
 import { Format } from "../../utils"
 import Checkbox from "../../components/checkbox"
+import dataAffiner, { IDataLine } from "./data-affiner"
+import { IQuantityData } from "../../models/tick/quantity"
+import sets from "../../models/set"
+import Loading from "../../components/loader"
 
 const upColor = '#26a69a'
 const downColor = '#ef5350'
@@ -20,79 +23,134 @@ const localRed = 'rgba(239, 83, 80, 0.6)'
 export type QuantityCategory = 'regular' | 'average' | 'median'
 
 interface IUnitChartProps { 
-    quantity: AssetModel
+    chart: IDataLine
 }
 
+const selectTickValueByCategory = (tick: IQuantityData, plus: boolean, category: QuantityCategory, isNet: boolean): number => {
+    if (isNet){
+         if (category === 'regular'){
+             const net = tick.plus - tick.minus
+             if (plus && net > 0){
+                 return net
+             } else if (plus && net < 0){
+                 return 0
+             }
+             if (!plus && net < 0){
+                 return net
+             } else if (!plus && net > 0){
+                 return 0
+             }
+         }
+         if (category === 'average'){
+             const net = tick.plus_average - tick.minus_average
+             if (plus && net > 0){
+                 return net
+             } else if (plus && net < 0){
+                 return 0
+             }
+             if (!plus && net < 0){
+                 return net
+             } else if (!plus && net > 0){
+                 return 0
+             }
+         }
+         if (category === 'median'){
+             const net = tick.plus_median - tick.minus_median
+             if (plus && net > 0){
+                 return net
+             } else if (plus && net < 0){
+                 return 0
+             }
+             if (!plus && net < 0){
+                 return net
+             } else if (!plus && net > 0){
+                 return 0
+             }
+         }
+    } else {
+         switch (category) {
+             case 'regular':
+                 return plus ? tick.plus : -tick.minus
+             case 'average':
+                 return plus ?tick.plus_average : -tick.minus_average
+             case 'median':
+                 return plus ? tick.plus_median : -tick.minus_median
+         }
+    }
+    return 0
+ }
+
+
+const QuantityToolTip = React.forwardRef((props: {
+    asset: AssetModel
+    category: QuantityCategory
+    ticks: IQuantityData[]
+    isNet: boolean
+}, ref) => {
+    const { asset, ticks } = props
+
+    const [selectedTime, setSelectedTime] = React.useState<number | null>(null)
+
+    useImperativeHandle(ref, () => ({
+        updateSelectedTime: (time: number | null) => {
+            setSelectedTime(time)
+        }
+    }), [])
+
+    if (asset.get().ressource().get().dataType()!= 2 || ticks.length === 0 ){
+        return null
+    }
+
+    const time = selectedTime ? selectedTime * 1000 : ticks[ticks.length - 1].time as number
+    const tickIdx = dataAffiner.binarySearchTick(ticks, time)
+    if (tickIdx === -1){
+        return null
+    }
+    const radix = asset.get().decimals()
+    const tick = ticks[tickIdx]
+
+    const volumeUp = selectTickValueByCategory(tick, true, props.category, props.isNet)
+    const volumeDown = selectTickValueByCategory(tick, false, props.category, props.isNet)
+    const netVolume = volumeUp - -volumeDown
+
+    return (
+        <SMALegend2 style={{top: 15, fontSize: 12}}>
+             {!props.isNet && <span>Total <span style={{color: 'white', fontWeight: 600}}>{Format.largeNumberToShortString(volumeUp + -volumeDown, radix)}</span> : </span>}
+             {volumeUp != 0 && <span style={{fontWeight: 600}}><span style={{color: upColor}}>+{Format.largeNumberToShortString(volumeUp, radix)}</span></span>}
+             {volumeDown != 0 && <span style={{fontWeight: 600}}><span style={{color: downColor}}> {Format.largeNumberToShortString(volumeDown, radix)}</span></span>}
+            {!props.isNet && <span> = <span style={{color: netVolume > 0 ? upColor : downColor, fontWeight: 700}}>{netVolume > 0? "+": ''}{Format.largeNumberToShortString(netVolume, radix)}</span></span>}
+        </SMALegend2>
+    )
+})
+
+
 const QuantityChart =  React.forwardRef<any, IChartOptions & IUnitChartProps>((props, ref)  => {
-    const { quantity } = props
+    const { chart } = props
+
     const histoSerieRef = useRef<ISeriesApi<'Histogram'>>(null);
     const chartRef = useRef<IChartApi>(null);
+    const toolTipRef = useRef<{
+        updateSelectedTime: (time: number | null) => void
+    } | null>(null)
+
     const [category, setCategory] = React.useState<QuantityCategory>('regular')
     const [isNet, setIsNet] = React.useState<boolean>(false)
 
     useImperativeHandle(ref, () => ({
         serie: histoSerieRef.current,
         chart: chartRef.current,
-        assets: (): string[] => [quantity.get().addressString()]
+        updateSelectedTime: (time: number | null) => {
+            toolTipRef.current?.updateSelectedTime(time)
+        },
     } as UnitChartRefType), [histoSerieRef.current, chartRef.current])
 
-    const selectTickValueByCategory = (tick: QuantityModel, plus: boolean): number => {
-        
-       if (isNet){
-            if (category === 'regular'){
-                const net = tick.get().plus() - tick.get().minus()
-                if (plus && net > 0){
-                    return net
-                } else if (plus && net < 0){
-                    return 0
-                }
-                if (!plus && net < 0){
-                    return net
-                } else if (!plus && net > 0){
-                    return 0
-                }
-            }
-            if (category === 'average'){
-                const net = tick.get().plusAvg() - tick.get().minusAvg()
-                if (plus && net > 0){
-                    return net
-                } else if (plus && net < 0){
-                    return 0
-                }
-                if (!plus && net < 0){
-                    return net
-                } else if (!plus && net > 0){
-                    return 0
-                }
-            }
-            if (category === 'median'){
-                const net = tick.get().plusMedian() - tick.get().minusMedian()
-                if (plus && net > 0){
-                    return net
-                } else if (plus && net < 0){
-                    return 0
-                }
-                if (!plus && net < 0){
-                    return net
-                } else if (!plus && net > 0){
-                    return 0
-                }
-            }
-       } else {
-            switch (category) {
-                case 'regular':
-                    return plus ? tick.get().plus() : -tick.get().minus()
-                case 'average':
-                    return plus ?tick.get().plusAvg(): -tick.get().minusAvg()
-                case 'median':
-                    return plus ? tick.get().plusMedian() : -tick.get().minusMedian()
-            }
-       }
-       return 0
+    const getTicks = (asset: AssetModel)=> {
+        const ref = dataAffiner.getAssetRefByAddr(asset.get().addressString())
+        if (!ref){
+            return []
+        }
+        return ref.data as IQuantityData[]
     }
-
-
-    const ticks = quantity.get().ticks() as QuantityCollection || new QuantityCollection([])
 
     const handleVisibleLogicalRangeChange = useCallback(() => {
         if (!chartRef || !chartRef.current) {
@@ -122,7 +180,8 @@ const QuantityChart =  React.forwardRef<any, IChartOptions & IUnitChartProps>((p
             <div style={{display: 'flex', flexDirection: 'row', alignItems:'center'}}>
                 <span style={{fontSize: size * 14, color: 'white'}}>{setID[0]}-{setID[1]}</span>
                 <span style={{marginLeft:  size * 7, marginRight:  size *7, fontSize: size *10}}>•</span>
-                <span style={{fontSize:  size *14, color: 'white', fontWeight: 500}}>{quantity.get().address().get().printableID()}</span>
+                <span style={{fontSize:  size *14, color: 'white', fontWeight: 500}}>{asset.get().address().get().printableID()}</span>
+                {props.loading && <Loading style={{marginLeft: 7}} size={14} white />}
             </div>
         )
     }
@@ -131,7 +190,13 @@ const QuantityChart =  React.forwardRef<any, IChartOptions & IUnitChartProps>((p
         return (
             <div style={{display: 'flex', flexDirection: 'column', marginLeft: 5, position:'absolute', top:0, left: 0,zIndex:5}}>
                 {renderTitle(asset, size)}
-                {renderAssetDataTooltip(asset)}
+                <QuantityToolTip 
+                    ref={toolTipRef}
+                    ticks={dataAffiner.getAssetRefByAddr(asset.get().addressString())?.data as IQuantityData[]}
+                    asset={asset}
+                    category={category}
+                    isNet={isNet}
+                />
             </div>
         )
     }
@@ -183,38 +248,12 @@ const QuantityChart =  React.forwardRef<any, IChartOptions & IUnitChartProps>((p
             </div>
         )
     }
-
-
-    const renderAssetDataTooltip = (asset: AssetModel) => {
-        if (asset.get().ressource().get().dataType()!= 2){
-            return null
-        }
-        const ticks = asset.get().ticks() as QuantityCollection || new QuantityCollection([])
-
-        const selectedTime = props.selectedTime ? props.selectedTime * 1000 : ticks.latestTime()
-        const tick = ticks.get(selectedTime)
-        if (!tick){
-            return null
-        }
-        const radix = asset.get().decimals()
-
-        const volumeUp = selectTickValueByCategory(tick, true)
-        const volumeDown = selectTickValueByCategory(tick, false)
-        const netVolume = volumeUp - -volumeDown
-
-        return (
-            <SMALegend2 style={{top: 15, fontSize: 12}}>
-                 {!isNet && <span>Total <span style={{color: 'white', fontWeight: 600}}>{Format.largeNumberToShortString(volumeUp + -volumeDown, radix)}</span> : </span>}
-                 {volumeUp != 0 && <span style={{fontWeight: 600}}><span style={{color: upColor}}>+{Format.largeNumberToShortString(volumeUp, radix)}</span></span>}
-                 {volumeDown != 0 && <span style={{fontWeight: 600}}><span style={{color: downColor}}> {Format.largeNumberToShortString(volumeDown, radix)}</span></span>}
-                {!isNet && <span> = <span style={{color: netVolume > 0 ? upColor : downColor, fontWeight: 700}}>{netVolume > 0? "+": ''}{Format.largeNumberToShortString(netVolume, radix)}</span></span>}
-            </SMALegend2>
-        )
-    }
+  
+    const asset = sets.assetsByAddresses([chart.asset_address]).first() as AssetModel
 
     return (
         <div style={{position: 'relative', width: '100%'}}>
-            {renderLegend(quantity)}
+            {renderLegend(asset)}
             <Chart 
                 onCrosshairMove={handleCrosshairMove} 
                 ref={chartRef}
@@ -226,8 +265,8 @@ const QuantityChart =  React.forwardRef<any, IChartOptions & IUnitChartProps>((p
                 />
                 <HistogramSeries
                     ref={histoSerieRef}
-                    data={ticks.state.map((t: QuantityModel) => {
-                        const o = {value: selectTickValueByCategory(t, true), time: t.get().time() / 1000, color: localGreen}
+                    data={getTicks(asset).map((t: IQuantityData) => {
+                        const o = {value: selectTickValueByCategory(t, true, category, isNet), time: t.time / 1000, color: localGreen}
                         return o
                     }) as any}
                     priceFormat={{
@@ -238,8 +277,8 @@ const QuantityChart =  React.forwardRef<any, IChartOptions & IUnitChartProps>((p
                     reactive={true}
                 />
                 <HistogramSeries
-                    data={ticks.state.map((t: QuantityModel) => {
-                        const o = {value: selectTickValueByCategory(t, false), time: t.get().time() / 1000, color: localRed}
+                    data={getTicks(asset).map((t: IQuantityData) => {
+                        const o = {value: selectTickValueByCategory(t, false, category, isNet), time: t.time / 1000, color: localRed}
                         return o
                     }) as any}
                     priceFormat={{type: 'volume'}}

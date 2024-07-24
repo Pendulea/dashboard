@@ -1,176 +1,168 @@
 import { IChartApi, ISeriesApi, LineData, MouseEventParams, Time } from "lightweight-charts"
-import {  useCallback, useEffect, useImperativeHandle, useRef } from "react"
+import {  useCallback, useImperativeHandle, useRef } from "react"
 import { Chart, LineSeries, TimeScale } from "lightweight-charts-react-wrapper"
-
 import options, {IChartOptions} from './chart-options'
 import _ from "lodash"
 import React from "react"
-import { AssetCollection, AssetModel } from "../../models/asset"
+import {  AssetModel } from "../../models/asset"
 import { UnitChartRefType } from "./interfaces"
 import styled from "styled-components"
-import { UnitCollection, UnitModel } from "../../models/tick/unit"
-import { QuantityModel } from "../../models/tick/quantity"
-import { PointModel } from "../../models/tick/point"
 import { Format, generateRandomShade } from "../../utils"
 import AddAsset from "./add-asset"
 import sets, { SetModel } from "../../models/set"
 import Checkbox from "../../components/checkbox"
+import dataAffiner, { IAssetRef, TDataPoint , IDataLine } from "./data-affiner"
+import { IPointData } from "../../models/tick/point"
+import Loading from "../../components/loader"
 
 
-interface IPointChartProps { 
-    asset: AssetModel
-    column: string
-    fetchCount: number
-    timeframe: number
+const selectTickValue = (asset: AssetModel, tick: TDataPoint, column: string): number => {
+    if (!column){
+        return (tick as IPointData).v
+    }
+    if (asset.get().dataType() === 1 || asset.get().dataType() === 2){
+        const d = tick as any
+        return d[column] || 0
+    }
+    return -1
 }
 
-interface IExtraLine {
-    asset_address: string
-    column: string
+const wrapTickValuePercent = (value: number, max: number, isPercent: boolean) => {
+    if (isPercent){
+        return max === 0 ? 0 : (value / max) * 100
+    }
+    return value
 }
 
-const getMaxValue = (data: LineData[]): number => {
-    const maxValue = Math.max(...data.map(d => d.value));
-    return maxValue
+const getColor = (asset:AssetModel, column:string)=> {
+    const args = asset.get().address().get().arguments()
+    let argInt = 0
+    if (args.length > 0){
+        argInt = Format.stringToNumber(asset.get().address().get().setID().join('') + args.join('')) % 10_000
+    } else {
+        argInt = Format.stringToNumber(asset.get().address().get().setID().join('') + column) % 10_000
+    }
+    return generateRandomShade(asset.get().ressource().get().color(), argInt)
 }
 
-const convertToPercentOfMax = (data: LineData[], timeframe: number, asset?: AssetModel): LineData[] => {
+const convertToPercentOfMax = (data: LineData[], maxVisible: number): LineData[] => {
     if (data.length === 0) 
         return data;
 
-    let maxValue: number = Number.MIN_VALUE
-    if (asset){
-        maxValue = asset.get().consistencies().findByTimeframe(timeframe)?.get().maxValue() as number
-    }  else {
-        maxValue = getMaxValue(data)
-    }
     return data.map(d => ({
       time: d.time,
-      value: (d.value / maxValue) * 100,
+      value: (d.value / maxVisible) * 100,
     }));
 };
-function synchronizeDataLists(dataLists: LineData[][]): LineData[][] {
-    // Step 1: Collect all unique timestamps
-    const allTimestamps = new Set<Time>();
-    for (const dataList of dataLists) {
-        for (const dataPoint of dataList) {
-            allTimestamps.add(dataPoint.time);
+
+const PointToolTip = React.forwardRef((props: {
+    charts: IDataLine[]
+    isPercent: boolean,
+    isMaxInTicks: boolean,
+    timeframe: number,
+    loading: boolean
+}, ref) => {
+
+    const {
+        isPercent,
+        isMaxInTicks,
+        timeframe,
+        charts
+    } = props;
+
+    useImperativeHandle(ref, () => ({
+        updateSelectedTime: (time: number | null) => {
+            setSelectedTime(time)
         }
-    }
+    }), [])
 
-    // Convert set to sorted array
-    const sortedTimestamps = Array.from(allTimestamps).sort();
+    const [selectedTime, setSelectedTime] = React.useState<number | null>(null)
 
-    // Step 2: Create synchronized data lists
-    const synchronizedDataLists = dataLists.map(dataList => {
-        const timeToDataPointMap = new Map<Time, LineData>();
-        dataList.forEach(dataPoint => timeToDataPointMap.set(dataPoint.time, dataPoint));
 
-        const synchronizedDataList: LineData[] = [];
-        let lastValue = 0; // Initial last value is 0
-
-        for (const timestamp of sortedTimestamps) {
-            if (timeToDataPointMap.has(timestamp)) {
-                lastValue = timeToDataPointMap.get(timestamp)!.value;
+    const renderItem = (asset: AssetModel, chart: IDataLine, ref: IAssetRef) => {
+        if (ref.data.length === 0){
+            return null
+        }
+        const time = selectedTime ? selectedTime * 1000 : ref.data[ref.data.length - 1].time as number
+        const tickIdx = dataAffiner.binarySearchTick(ref.data, time)
+        if (tickIdx === -1){
+            return null
+        }
+        const tick = ref.data[tickIdx]
+        const localMax = chart.max_value
+        let max = Number.MIN_VALUE
+        if (isPercent){
+            if (isMaxInTicks){
+                max = localMax
+            } else {
+                max = asset.get().consistencies().findByTimeframe(timeframe)?.get().maxValue() as number
             }
-            synchronizedDataList.push({ time: timestamp, value: lastValue });
         }
 
-        return synchronizedDataList;
-    });
-
-    return synchronizedDataLists;
-}
-
-
-function binarySearch(arr: LineData[], targetTime: number): number {
-    let left = 0;
-    let right = arr.length - 1;
-
-    while (left <= right) {
-        const mid = Math.floor((left + right) / 2);
-        const midVal = arr[mid];
-
-        if (midVal.time === targetTime) {
-            return mid;
-        } else if (Number(midVal.time) < targetTime) {
-            left = mid + 1;
-        } else {
-            right = mid - 1;
+        const color = getColor(asset, chart.column)
+        let name = asset.get().address().get().printableID()
+        if (asset.get().dataType() != 3){
+            name += `.${chart.column.toUpperCase()}`
         }
+
+        const tickValue = selectTickValue(asset, tick, chart.column)
+
+        return (
+            <div style={{color, fontSize: 12, fontWeight: 500}}>
+                <span>{name} : {tickValue} {isPercent ? ` (${wrapTickValuePercent(tickValue, max, isPercent).toFixed(2)}%)` : ''}</span>
+            </div>
+        )
     }
 
-    return -1; // Target not found
+    return (
+        <SMALegend2 style={{position: 'absolute', zIndex:1000, top: 5, left: 5, display: 'flex', gap: '2px 20px', flexWrap:'wrap', width: '85%' }}>
+            {charts.map((chart, idx) => {
+                const asset = sets.assetsByAddresses([chart.asset_address]).first() as AssetModel
+                const ref= dataAffiner.getAssetRefByAddr(asset.get().addressString())
+                if (!ref){
+                    return null
+                }
+                return (
+                    <div key={idx+1}>
+                        {renderItem(asset, chart, ref)}
+                    </div>
+                )
+            })}
+             {props.loading && <Loading style={{marginLeft: 7}} size={14} white />}
+            
+        </SMALegend2>
+    )
+})
+
+
+interface IPointChartProps { 
+    charts: IDataLine[]
+    timeframe: number
 }
 
 const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((props, ref)  => {
     const { timeframe } = props
     const lineSerieRef = useRef<ISeriesApi<'Line'>>(null);
     const chartRef = useRef<IChartApi>(null);
+    const toolTipRef = useRef<{
+        updateSelectedTime: (time: number | null) => void
+    } | null>(null)
 
-    const [extraLines, setExtraLines] = React.useState<IExtraLine[]>([])
-
-    const [selectedSet, setSelectedSet] = React.useState<SetModel>(sets.elem0() as SetModel)
-    const [selectedAsset, setSelectedAsset] = React.useState<null | AssetModel>(null)
-    const [selectedColumn, setSelectedColumn] = React.useState<string | null>(null)
     const [isPercent, setIsPercent] = React.useState(false)
     const [isMaxInTicks, setIsMaxInTicks] = React.useState(true)
-    const [dataList, setData] = React.useState<LineData[][]>([])
-    const [maxList, setMaxList] = React.useState<number[]>([])
-
 
     useImperativeHandle(ref, () => ({
         serie: lineSerieRef.current,
         chart: chartRef.current,
-        assets: (): string[] => [props.asset.get().addressString(), ...extraLines.map(l => l.asset_address)],
-    } as UnitChartRefType), [lineSerieRef.current, chartRef.current, extraLines])
-
-    useEffect(() => {
-        
-        const lines: IExtraLine[] = [{
-            asset_address: props.asset.get().addressString(),
-            column: props.column
-        }, ...extraLines.slice(0, 4)]
-
-        const dataList = synchronizeDataLists(lines.map((line, idx) => {
-            const asset = sets.assetsByAddresses([line.asset_address]).first() as AssetModel
-            return getTicks(asset, line.column)
-        }))
-
-        setData(dataList)
-        setMaxList(dataList.map(d => getMaxValue(d)))
-
-    }, [props.fetchCount])
-
-
-    const selectTickValue = (asset:AssetModel, tick: UnitModel | QuantityModel | PointModel, column: string): number => {
-        if (!column){
-            return (tick as PointModel).get().value()
-        }
-        if (asset.get().dataType() === 1){
-            const d = (tick as UnitModel).state as any
-            return d[column] || 0
-        }
-        if (asset.get().dataType() === 2){
-            const d = (tick as QuantityModel).state as any
-            return d[column] || 0
-        }
-        return -1
-    }
-
-    const wrapTickValuePercent = (value: number, max: number) => {
-        if (isPercent){
-            return max === 0 ? 0 : (value / max) * 100
-        }
-        return value
-
-    }
+        updateSelectedTime: (time: number | null) => {
+            toolTipRef.current?.updateSelectedTime(time)
+        },
+    } as UnitChartRefType), [lineSerieRef.current, chartRef.current])
 
     const handleVisibleLogicalRangeChange = useCallback(() => {
         if (!chartRef || !chartRef.current) {
             return;
         }
-
         const timeScale = chartRef.current.timeScale()
         const logicalRange = timeScale.getVisibleLogicalRange();
  
@@ -187,25 +179,15 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
         debouncedCrosshairMove(e)
     }, []);
 
-    const getTicks = (asset: AssetModel, column:string )=> {
-        const ticks = asset.get().ticks()
-        if (!ticks){
+    const getTicks = (asset: AssetModel, column: string)=> {
+        const ref = dataAffiner.getAssetRefByAddr(asset.get().addressString())
+        if (!ref){
             return []
         }
-        return ticks.state.map((tick: UnitModel | QuantityModel | PointModel) => {
-            return {value: selectTickValue(asset, tick, column), time: tick.get().time() / 1000 as Time}
-        })
-    }
 
-    const getColor = (asset:AssetModel, column:string)=> {
-        const args = asset.get().address().get().arguments()
-        let argInt = 0
-        if (args.length > 0){
-            argInt = Format.stringToNumber(asset.get().address().get().setID().join('') + args.join('')) % 10_000
-        } else {
-            argInt = Format.stringToNumber(asset.get().address().get().setID().join('') + column) % 10_000
-        }
-        return generateRandomShade(asset.get().ressource().get().color(), argInt)
+        return ref.data.map((tick: TDataPoint) => {
+            return {value: selectTickValue(asset, tick, column), time: tick.time / 1000 as Time}
+        })
     }
 
     const renderValueDisplayMenu = () =>{
@@ -249,73 +231,12 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
         )
     }
 
-    const renderLegend = () => {
-        const renderItem = (asset: AssetModel, column: string, idx: number) => {
-            const data = dataList[idx]
-            if (!data|| data.length === 0){
-                return null
-            }
-            const selectedTime = props.selectedTime ? props.selectedTime : data[data.length - 1].time as number
-            const tickIdx = binarySearch(data, selectedTime)
-            if (tickIdx === -1){
-                return null
-            }
-            const tick = data[tickIdx]
-            const localMax = maxList[idx]
-            let max = Number.MIN_VALUE
-            if (isPercent){
-                if (isMaxInTicks){
-                    max = localMax
-                } else {
-                    max = asset.get().consistencies().findByTimeframe(timeframe)?.get().maxValue() as number
-                }
-            }
-
-            const color = getColor(asset, column)
-            let name = asset.get().address().get().printableID()
-            if (asset.get().dataType() != 3){
-                name += `.${column.toUpperCase()}`
-            }
-            return (
-                <div style={{color, fontSize: 12, fontWeight: 500}}>
-                    <span>{name} : {tick.value} {isPercent ? ` (${wrapTickValuePercent(tick.value, max).toFixed(2)}%)` : ''}</span>
-                </div>
-            )
-        }
-
-        const lines: IExtraLine[] = [{
-            asset_address: props.asset.get().addressString(),
-            column: props.column
-        }, ...extraLines.slice(0, 4)]
-
-        return (
-            <SMALegend2 style={{position: 'absolute', zIndex:1000, top: 5, left: 5, display: 'flex', gap: '2px 20px', flexWrap:'wrap', width: '85%' }}>
-                {lines.map((line, idx) => {
-                    const asset = sets.assetsByAddresses([line.asset_address]).first() as AssetModel
-                    return (
-                        <div key={idx+1}>
-                            {renderItem(asset, line.column, idx)}
-                        </div>
-                    )
-                })}
-            </SMALegend2>
-        )
-    }
-
     const renderLines = () => {
-        const lines: IExtraLine[] = [{
-            asset_address: props.asset.get().addressString(),
-            column: props.column
-        }, ...extraLines.slice(0, 4)]
+        return props.charts.map((chart: IDataLine, idx) => {
+            const asset = sets.assetsByAddresses([chart.asset_address]).first() as AssetModel
 
-        return lines.map((line, idx) => {
-            const list = dataList[idx]
-            if (!list){
-                return null
-            }
-
-            const asset = sets.assetsByAddresses([line.asset_address]).first() as AssetModel
-            const data = isPercent ? convertToPercentOfMax(dataList[idx], timeframe, !isMaxInTicks ? asset : undefined) : dataList[idx]
+            const ticks = getTicks(asset, chart.column)
+            const data = isPercent ? convertToPercentOfMax(ticks, chart.max_value) : ticks
 
             return (
                 <LineSeries
@@ -328,7 +249,7 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
                         type: isPercent ? 'percent' : 'price',
                     }}
                     lineWidth={2}
-                    color={getColor(asset, line.column)}
+                    color={getColor(asset, chart.column)}
                 />
             )
         })
@@ -336,7 +257,14 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
 
     return (
         <div style={{position: 'relative', width: '100%'}}>
-            {renderLegend()}
+            <PointToolTip 
+                ref={toolTipRef}
+                charts={props.charts}
+                isPercent={isPercent}
+                isMaxInTicks={isMaxInTicks}
+                timeframe={timeframe}
+                loading={props.loading}
+            />
             <Chart 
                 onCrosshairMove={handleCrosshairMove} 
                 ref={chartRef}
@@ -348,32 +276,19 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
                 />
                 {renderLines()}
             </Chart>
-            {extraLines.length <4 && <AddAsset 
-                selectedSet={selectedSet}
-                selectedAsset={selectedAsset}
-                selectedColumn={selectedColumn}
+            {props.charts.length < 5 && <AddAsset 
                 timeframe={timeframe}
-                onChange={(set, asset, column) => {
-                    setSelectedSet(set)
-                    setSelectedAsset(asset)
-                    if (
-                        (column && _.find(extraLines, {asset_address: asset?.get().addressString(), column: column})) ||
-                        (column && props.asset === asset && props.column === column)
-                    ){
-                        return 
-                    } else {
-                        setSelectedColumn(column || '')
-                    }
-                }}
-                onSubmit={() => {
-                    if (selectedAsset){
-                        setExtraLines([...extraLines, {asset_address: selectedAsset.get().addressString(), column: selectedColumn || ''}])
-                        setSelectedAsset(null)
-                        setSelectedColumn(null)
+                onSubmit={(set: SetModel | null, asset: AssetModel | null, columns: string[]) => {
+                    if (asset){
+                        const idx = dataAffiner.getMotherChartIndex(props.charts[0])
+                        if (idx === -1){
+                            return
+                        }
+                        dataAffiner.addSubChart(idx, asset.get().addressString(), columns.length> 0 ? columns[0] : '')
                         props.onRefreshAssets && setTimeout(props.onRefreshAssets, 50)
                     }
                 }}
-                inline={true}
+                multiColumn={false}
                 style={{marginTop: 20}}
             />}
             {renderValueDisplayMenu()}

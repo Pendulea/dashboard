@@ -1,65 +1,122 @@
-import { useEffect } from "react"
-import { BLACK } from "../constants"
-import { AssetCollection, AssetModel } from "../models/asset"
-import { SetModel } from "../models/set"
-import React from "react"
+import {useMemo } from "react"
+import {  AssetModel } from "../models/asset"
+import  { SetModel } from "../models/set"
+import Select from 'react-select';
 
 interface IProps {
-    assets: AssetCollection
-    onChangeAsset: (asset: AssetModel) => void
+    set: SetModel
     timeframe: number
-    selectedAsset?: AssetModel
-    size?: number
+    selectedAsset: AssetModel | null
+    onChange?: (asset: AssetModel) => void
 }
 
 const SelectAsset = (props: IProps) => {
-    const { assets, selectedAsset } = props
-    const selectRef = React.useRef<HTMLSelectElement>(null)
+    const { set, selectedAsset } = props
 
-    const size = props.size || 1
-
-    const reset = () => {
-        if (selectRef.current){
-            selectRef.current.value = undefined as any
-        }
+    const onChange = (address: string) =>{
+        const asset = set.get().assets().findByAddress(address) as AssetModel
+        asset && props.onChange && props.onChange(asset)
     }
 
-    useEffect(() => {
-        if (!selectedAsset){
-            reset()
+    const getOptions = useMemo(() => {
+        if (set){
+            return set.get().assets().filterByStartedSync(props.timeframe).map((asset: AssetModel) => {
+                const ressource = asset.get().ressource()
+                const label = ressource.get().dependencies().length > 0 ? asset.get().address().get().printableID() : ressource.get().label()
+                return {
+                    value: asset.get().addressString(),
+                    label: label
+                }
+            })
+        } else {
+            return []
         }
-    }, [selectedAsset])
+    }, [set, props.timeframe])
 
-    const assetList = assets.filterByStartedSync(props.timeframe)
 
     return (
         <div style={{display: 'flex', flexDirection: 'column'}}>
-            <span style={{fontSize: size * 11, marginBottom: size * 3}}>ASSET:</span>
-            <select 
-                ref={selectRef}
-                defaultValue={undefined}
-                onChange={({ target: { value } }) => {
-                    props.onChangeAsset(assets.findByAddress(value) as AssetModel)
+            <span style={{fontSize: 11, marginBottom: 3}}>ASSET:</span>
+            <Select
+                value={
+                    selectedAsset ? {
+                        value: selectedAsset.get().addressString(),
+                        label: selectedAsset.get().ressource().get().label()
+                    } : undefined
+                }
+                isSearchable={true}
+                name="asset"
+                options={getOptions}
+                onChange={(e) => e && onChange(e.value)}
+                styles={{
+                  valueContainer: (provided) => ({
+                    ...provided,
+                    height: '30px',
+                    padding: '0 8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }),
+                  indicatorSeparator: () => ({
+                    display: 'none',
+                  }),
+                  indicatorsContainer: (provided) => ({
+                    ...provided,
+                    height: '30px',
+                  }),
+                  control: (provided) => ({
+                    ...provided,
+                    backgroundColor: '#353535',
+                    borderColor: '#353535',
+                    minHeight: '25px',
+                    height: '30px',
+                    fontSize: 13,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }),
+                  input: (provided) => ({
+                    ...provided,
+                    color: '#FFFFFF',
+                    height: 'auto',
+                    fontSize: 13,
+                    margin: '0px',
+                    paddingTop: 0,
+                    paddingBottom: 0,
+                  }),
+                  menu: (provided) => ({
+                    ...provided,
+                    backgroundColor: '#353535',
+                    color: '#fff',
+                    fontSize: 13,
+                  }),
+                  singleValue: (provided) => ({
+                    ...provided,
+                    fontSize: 13,
+                    color: '#fff',
+                    fontWeight: 600,
+                  }),
+                  option: (provided, state) => ({
+                    ...provided,
+                    backgroundColor: state.isSelected
+                      ? '#555555'
+                      : state.isFocused
+                      ? '#444444'
+                      : '#353535',
+                    color: '#fff',
+                    padding: '5px 10px',
+                    fontSize: 13,
+                  }),
+                  placeholder: (provided) => ({
+                    ...provided,
+                    color: '#aaa',
+                    fontSize: 13,
+                  }),
                 }}
-                style={{width: '100%', height: size * 30, outline: 'none', backgroundColor: BLACK, color: 'white', fontSize:13 * size}}>
-                {!selectedAsset && <option value={undefined}></option>}
-                {assetList.orderByAddressAsc().map((asset: AssetModel) => {
-                    const ressource = asset.get().ressource()
-                    const label = ressource.get().dependencies().length > 0 ? asset.get().address().get().printableID() : ressource.get().label()
-                    return (
-                        <option 
-                            key={"435453"+asset.get().addressString()}
-                            value={asset.get().addressString()}
-                        >{label}</option>
-                    )
-                })}
-            </select>
-            {selectedAsset && <span style={{fontSize: size * 11.5, fontStyle: 'italic', marginTop: size * 5}}>
+            />
+            {selectedAsset && <span style={{fontSize:  11.5, fontStyle: 'italic', marginTop: 5}}>
                 {selectedAsset.get().ressource().get().description()}
             </span>}
         </div>
     )
 }
-
 
 export default SelectAsset

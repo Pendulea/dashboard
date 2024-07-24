@@ -2,10 +2,10 @@ import { CrosshairMode, LogicalRange, MouseEventParams } from "lightweight-chart
 
 export interface IChartOptions {
     onRefreshAssets?: () => void
-    selectedTime: number | null
     onChangeLogicRange?: (range: LogicalRange) => void
     onChangeCrossHair?: (e: MouseEventParams) => void
     displayTimeScale: boolean
+    loading: boolean
 }
 
 export default {

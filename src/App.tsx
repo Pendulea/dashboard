@@ -37,8 +37,8 @@ const Wrapper = (props: IProps) => {
   }
 
   const runInterval = () => {
-    intervalSets.current = setInterval(fetchSets, 7_000)
-    intervalStatus.current =  setInterval(fetchAppStatuses, 1_500)
+    // intervalSets.current = setInterval(fetchSets, 7_000)
+    // intervalStatus.current =  setInterval(fetchAppStatuses, 1_500)
   }
 
   useEffect(() => {

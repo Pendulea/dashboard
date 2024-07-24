@@ -1,66 +1,112 @@
-import { useEffect } from "react"
-import { BLACK } from "../constants"
+import { useMemo } from "react"
 import { SetCollection, SetModel } from "../models/set"
-import React from "react"
+import Select from 'react-select';
 
 interface IProps {
     sets: SetCollection
-    onChangeSet: (set: SetModel) => void
     timeframe: number
-    selectedSet?: SetModel
-    size?: number
+    onChange?: (set: SetModel) => void
+    selectedSet: SetModel | null
 }
 
 const SelectSet = (props: IProps) => {
-    const { sets, onChangeSet, selectedSet } = props
-    const selectRef = React.useRef<HTMLSelectElement>(null)
-
-    const size = props.size || 1
+    const { sets, selectedSet } = props
 
 
-    const reset = () => {
-        if (selectRef.current){
-            selectRef.current.value = undefined as any
-        }
+    const onChange = (value: string) => {
+        const s = sets.findByID(value)
+        s && props.onChange && props.onChange(s)
     }
 
-    useEffect(() => {
-        if (!selectedSet){
-            reset()
-            if (sets.count() > 0){
-                onChangeSet(sets.elem0())
+    const getOptions = useMemo(() => {
+        return sets.map((set: SetModel) => {
+            const idStr = set.get().settings().get().idString()
+            const id = set.get().settings().get().id()
+            return {
+                value: idStr,
+                label: `${id[0].toUpperCase()}-${id[1].toUpperCase()}`
             }
-        }
-    }, [selectedSet])
-
-
-    useEffect(() => {
-        if (!selectedSet && sets.count() > 0){
-            onChangeSet(sets.elem0())
-        }
+        })
     }, [])
 
     return (
         <div style={{display: 'flex', flexDirection: 'column'}}>
-            <span style={{fontSize: size * 11, marginBottom: size * 3}}>SET:</span>
-            <select 
-                ref={selectRef}
-                defaultValue={undefined}
-                onChange={({ target: { value } }) => {
-                    onChangeSet(sets.findByID(value) as SetModel)
-                }}
-                style={{width: '100%', height: size * 30, outline: 'none', backgroundColor: BLACK, color: 'white', fontSize: 13 * size}}>
-                {!selectedSet && <option value={undefined}></option>}
-                {sets.orderByRank().map((set: SetModel) => {
-                    const id = set.get().settings().get().id()
-                    return (
-                        <option 
-                            key={set.get().settings().get().idString()}
-                            value={set.get().settings().get().idString()}
-                        >{id[0].toUpperCase()}-{id[1].toUpperCase()}</option>
-                    )
-                })}
-            </select>
+            <span style={{fontSize: 11, marginBottom: 3}}>SET:</span>
+            <Select
+                value={
+                    selectedSet ? {
+                        value: selectedSet.get().settings().get().idString(),
+                        label: `${selectedSet.get().settings().get().id()[0].toUpperCase()}-${selectedSet.get().settings().get().id()[1].toUpperCase()}`
+                    } : undefined
+                }
+                isSearchable={true}
+                name="set"
+                options={getOptions}
+                onChange={(e) => e && onChange(e.value)}
+                styles={{
+                    valueContainer: (provided) => ({
+                      ...provided,
+                      height: '30px',
+                      padding: '0 8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }),
+                    indicatorSeparator: () => ({
+                      display: 'none',
+                    }),
+                    indicatorsContainer: (provided) => ({
+                      ...provided,
+                      height: '30px',
+                    }),
+                    control: (provided) => ({
+                      ...provided,
+                      backgroundColor: '#353535',
+                      borderColor: '#353535',
+                      minHeight: '25px',
+                      height: '30px',
+                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'center',
+                    }),
+                    input: (provided) => ({
+                      ...provided,
+                      color: '#FFFFFF',
+                      height: 'auto',
+                      fontSize: 13,
+                      margin: '0px',
+                      paddingTop: 0,
+                      paddingBottom: 0,
+                    }),
+                    menu: (provided) => ({
+                      ...provided,
+                      backgroundColor: '#353535',
+                      color: '#fff',
+                      fontSize: 13,
+                    }),
+                    singleValue: (provided) => ({
+                      ...provided,
+                      fontSize: 13,
+                      color: '#fff',
+                      fontWeight: 600,
+                    }),
+                    option: (provided, state) => ({
+                      ...provided,
+                      backgroundColor: state.isSelected
+                        ? '#555555'
+                        : state.isFocused
+                        ? '#444444'
+                        : '#353535',
+                      color: '#fff',
+                      padding: '5px 10px',
+                      fontSize: 13,
+                    }),
+                    placeholder: (provided) => ({
+                      ...provided,
+                      color: '#aaa',
+                      fontSize: 13,
+                    }),
+                  }}
+            />
         </div>
     )
 }

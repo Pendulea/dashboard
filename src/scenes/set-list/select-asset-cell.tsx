@@ -3,7 +3,6 @@ import sets, { SetModel } from "../../models/set"
 import { AssetModel } from "../../models/asset"
 import _ from 'lodash'
 import TimeframeCell from "./timeframe-cell"
-import Checkbox from "../../components/checkbox"
 import SelectSet from "../../components/select-set"
 import SelectAsset from "../../components/select-asset"
 import SelectColumns from "../../components/select-columns"

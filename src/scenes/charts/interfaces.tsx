@@ -1,8 +1,7 @@
 import { IChartApi, ISeriesApi } from "lightweight-charts";
-import { AssetModel } from "../../models/asset";
 
 export type UnitChartRefType = {
     chart: IChartApi;
     serie: ISeriesApi<any>;
-    assets: () => string[];
+    updateSelectedTime: (time: number | null) => void;
   };

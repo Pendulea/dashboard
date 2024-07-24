@@ -226,7 +226,6 @@ export class SetCollection extends Collection {
                     asset.updateState(assetJSON)
                 })
             }
-            this.action().save()
             return null
         } catch (e: any){
             return e.toString() as string

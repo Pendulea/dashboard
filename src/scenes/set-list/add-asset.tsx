@@ -79,7 +79,6 @@ export default (props: IProps) => {
             return
         }
         setWaitMessage2('Sending the request...')
-        await new Promise((resolve) => setTimeout(resolve, 2000))
         await props.onSubmit(data)
         setLoadingState(false)
         setWaitMessage2('')
