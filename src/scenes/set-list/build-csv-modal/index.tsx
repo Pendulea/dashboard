@@ -1,20 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import Modal from '../../components/modal';
-import DropdownAlert from '../../components/dropdown-alert';
+import Modal from '../../../components/modal';
+import DropdownAlert from '../../../components/dropdown-alert';
 import 'react-datepicker/dist/react-datepicker.css';
 import DatePicker from 'react-datepicker';
 import _ from 'lodash';
-import Button from '../../components/button';
-import appStatus from '../../models/status';
-import { Format, service } from '../../utils';
-import { showAlertMessage } from '../../constants/msg';
-import { CSVStatusModel } from '../../models/status/csv-status';
+import Button from '../../../components/button';
+import appStatus from '../../../models/status';
+import { Format, service } from '../../../utils';
+import { showAlertMessage } from '../../../constants/msg';
+import { CSVStatusModel } from '../../../models/status/csv-status';
 import CSVStatus from './csv-status';
-import { GOLD } from '../../constants';
+import { GOLD } from '../../../constants';
 import TimeframeCell from './timeframe-cell';
-import SelectAddressCell from './select-asset-cell';
-import sets from '../../models/set';
+import sets, { SetModel } from '../../../models/set';
+import AddAsset from '../../charts/add-asset';
+import { AssetModel } from '../../../models/asset';
 
 type UnpackedOrder = string[] | null
 
@@ -49,7 +50,16 @@ const BuildCSVModal: React.FC<BuildCSVModalProps> = ({ onClose, dropdownRef, sho
         if (toUnix < endDate || endDate.getTime() == 0){
             setEndDate(toUnix)
         }
-    }, [orders])
+    }, [orders, selectedTimeframe])
+
+    const formatOrder = (asset: AssetModel, columns: string[]): UnpackedOrder => {
+        if (columns.length < 1)
+            return null
+        const ret: string[] = [ asset.get().addressString(), ...columns]
+        if (ret.length < 2)
+            return null
+        return ret
+    }
 
     const onUpdateOrder = (order: UnpackedOrder, idx: number) => {
         const cpy = _.cloneDeep(orders)
@@ -200,10 +210,17 @@ const BuildCSVModal: React.FC<BuildCSVModalProps> = ({ onClose, dropdownRef, sho
                                     />}
                                 </div>
                             </div>
-                            <SelectAddressCell 
-                                onUpdateOrder={(order) => onUpdateOrder(order, idx)} 
-                                timeframe={selectedTimeframe}
-                            />
+                            <div style={{width: '100%'}}>
+                                <AddAsset 
+                                    timeframe={selectedTimeframe}
+                                    multiColumn={true}
+                                    onChange={(set: SetModel | null, asset: AssetModel | null, columns: string[]) => {
+                                        if (set && asset){
+                                            onUpdateOrder(formatOrder(asset, columns), idx)
+                                        }
+                                    }}
+                                />
+                            </div>
                         </div>
                     )
                 })}                

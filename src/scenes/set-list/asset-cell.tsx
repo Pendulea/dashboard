@@ -8,14 +8,11 @@ import moment from "moment"
 import { getTypeByColumn } from "../../constants/columns"
 import { ConsistencyModel } from "../../models/asset/consistency"
 
-
-
 interface IProps {
     asset: AssetModel
     set: SetModel
     timeframe: number 
 }
-
 
 const AssetCell = (props: IProps) => {
     const [isOpen, setIsOpen] = useState(false);

@@ -1,10 +1,10 @@
 import{ useState } from 'react';
 import CreatableSelect from 'react-select/creatable';
 import { Format } from '../../utils';
-import { customStyles } from './select-style'
 import { SetModel } from '../../models/set';
 import { FLASHY_GREEN, GREEN, RED } from '../../constants';
 import _ from 'lodash';
+import selectStyle from '../../components/select-style';
 
 
 interface IProps {
@@ -47,7 +47,7 @@ const TimeframeSelect = ({ set, onSelect, onAdd, defaultValue }: IProps ) => {
       <CreatableSelect 
         isLoading={loading} 
         options={options} 
-        styles={customStyles} 
+        styles={selectStyle} 
         placeholder="Select/Add a timeframe"
         formatCreateLabel={(inputValue) => {
           let color = FLASHY_GREEN

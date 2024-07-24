@@ -1,9 +1,9 @@
 import moment from "moment";
-import { CSVStatusModel } from "../../models/status/csv-status";
-import { Format } from "../../utils";
+import { CSVStatusModel } from "../../../models/status/csv-status";
+import { Format } from "../../../utils";
 import React from "react";
-import { DARK_GREEN, FLASHY_GREEN, GOLD, GREEN, RED } from "../../constants";
-import Button from "../../components/button";
+import { DARK_GREEN, FLASHY_GREEN, GOLD, GREEN, RED } from "../../../constants";
+import Button from "../../../components/button";
 
 interface IProps {
     status: CSVStatusModel;

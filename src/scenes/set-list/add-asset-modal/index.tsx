@@ -1,10 +1,10 @@
 import React from 'react';
 import styled from 'styled-components';
-import Modal from '../../components/modal';
-import { IAddAssetRequest, SetModel } from '../../models/set';
+import Modal from '../../../components/modal';
+import { IAddAssetRequest, SetModel } from '../../../models/set';
 import AddAsset from './add-asset';
-import DropdownAlert from '../../components/dropdown-alert';
-import { showAlertMessage } from '../../constants/msg';
+import DropdownAlert from '../../../components/dropdown-alert';
+import { showAlertMessage } from '../../../constants/msg';
 
 interface AddPairModalProps {
     set?: SetModel
@@ -50,7 +50,7 @@ const AddPairModal: React.FC<AddPairModalProps> = ({ set, onClose, dropdownRef }
 export default AddPairModal;
 
 const ModalWrapper = styled.div`
-  width: 300px;
+  width: 400px;
   min-height: 300px;
   background-color: #111111;
   border-radius: 10px;

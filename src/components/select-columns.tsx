@@ -2,6 +2,7 @@ import _  from "lodash"
 import { AssetModel } from "../models/asset"
 import  {  useMemo } from "react"
 import Select from 'react-select';
+import selectStyle from "./select-style";
 
 interface IProps {
     asset: AssetModel
@@ -45,6 +46,8 @@ const SelectColumns = (props: IProps) => {
     }
 
     const isMulti = props.maxSelectable && props.maxSelectable > 1 ? true : false
+
+
     return (
        <div style={{display: 'flex', flexDirection: 'column'}}>
             <span style={{fontSize: 11 * size, marginBottom: 3 * size}}>COLUMNS:</span>
@@ -52,7 +55,9 @@ const SelectColumns = (props: IProps) => {
                 value={getOptions.filter((o) => props.columns.includes(o.value))}
                 isMulti={isMulti}
                 name="columns"
+                placeholder={"Select column" + (isMulti ? "s" : "")}
                 options={getOptions}
+                isSearchable={true}
                 onChange={(e:any) => {
                   if (isMulti){
                     onChange(e.map((o: any) => o.value))
@@ -60,69 +65,67 @@ const SelectColumns = (props: IProps) => {
                     onChange([e.value])
                   }
                 }}
-                styles={{
-                  valueContainer: (provided) => ({
-                    ...provided,
-                    height: '30px',
-                    padding: '0 8px',
-                    display: 'flex',
-                    alignItems: 'center',
+                isClearable={props.maxSelectable === 1}
+                styles={!isMulti ? selectStyle : {
+                  valueContainer: (provided: any) => ({
+                      ...provided,
+                      padding: '0 8px',
+                      display: 'flex',
+                      alignItems: 'center',
                   }),
                   indicatorSeparator: () => ({
-                    display: 'none',
+                      display: 'none',
                   }),
-                  indicatorsContainer: (provided) => ({
-                    ...provided,
-                    height: '30px',
+                  indicatorsContainer: (provided: any) => ({
+                      ...provided,
+                      height: '30px',
                   }),
-                  control: (provided) => ({
-                    ...provided,
-                    backgroundColor: '#353535',
-                    borderColor: '#353535',
-                    minHeight: '25px',
-                    height: '30px',
-                    fontSize: 13,
-                    display: 'flex',
-                    alignItems: 'center',
+                  control: (provided: any) => ({
+                      ...provided,
+                      backgroundColor: '#353535',
+                      borderColor: '#353535',
+                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'center',
                   }),
-                  input: (provided) => ({
-                    ...provided,
-                    color: '#FFFFFF',
-                    height: 'auto',
-                    fontSize: 13,
-                    margin: '0px',
-                    paddingTop: 0,
-                    paddingBottom: 0,
+                  input: (provided: any) => ({
+                      ...provided,
+                      color: '#FFFFFF',
+                      height: 'auto',
+                      fontSize: 13,
+                      margin: '0px',
+                      paddingTop: 0,
+                      paddingBottom: 0,
                   }),
-                  menu: (provided) => ({
-                    ...provided,
-                    backgroundColor: '#353535',
-                    color: '#fff',
-                    fontSize: 13,
+                  menu: (provided: any) => ({
+                      ...provided,
+                      backgroundColor: '#353535',
+                      color: '#fff',
+                      fontSize: 13,
                   }),
-                  singleValue: (provided) => ({
-                    ...provided,
-                    fontSize: 13,
-                    color: '#fff',
-                    fontWeight: 600,
+                  singleValue: (provided: any) => ({
+                      ...provided,
+                      fontSize: 13,
+                      color: '#fff',
+                      fontWeight: 600,
                   }),
-                  option: (provided, state) => ({
-                    ...provided,
-                    backgroundColor: state.isSelected
+                  option: (provided:any, state:any) => ({
+                      ...provided,
+                      backgroundColor: state.isSelected
                       ? '#555555'
                       : state.isFocused
                       ? '#444444'
                       : '#353535',
-                    color: '#fff',
-                    padding: '5px 10px',
-                    fontSize: 13,
+                      color: '#fff',
+                      padding: '5px 10px',
+                      fontSize: 13,
                   }),
-                  placeholder: (provided) => ({
-                    ...provided,
-                    color: '#aaa',
-                    fontSize: 13,
+                  placeholder: (provided: any) => ({
+                      ...provided,
+                      color: '#aaa',
+                      fontSize: 13,
                   }),
-                }}
+              }}
             />
         </div>
     )

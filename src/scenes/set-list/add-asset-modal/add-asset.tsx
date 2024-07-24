@@ -1,14 +1,13 @@
-import { customStyles } from './select-style'
-import Select from 'react-select';
-import { IAddAssetRequest, SetModel } from '../../models/set';
-import { AvailableAssetCollection, AvailableAssetModel } from '../../models/ressources/asset';
+import { IAddAssetRequest, SetModel } from '../../../models/set';
+import { AvailableAssetCollection, AvailableAssetModel } from '../../../models/ressources/asset';
 import { useState } from 'react';
-import { BLACK } from '../../constants';
-import ressources from '../../models/ressources';
-import Button from '../../components/button';
-import { AssetCollection, AssetModel } from '../../models/asset';
-import { showAlertMessage } from '../../constants/msg';
-import DropdownAlert from '../../components/dropdown-alert';
+import ressources from '../../../models/ressources';
+import Button from '../../../components/button';
+import { AssetCollection, AssetModel } from '../../../models/asset';
+import { showAlertMessage } from '../../../constants/msg';
+import DropdownAlert from '../../../components/dropdown-alert';
+import Select from 'react-select';
+import selectStyle from '../../../components/select-style';
 
 
 interface IProps {
@@ -17,7 +16,7 @@ interface IProps {
     dropdownRef: React.RefObject<DropdownAlert>
 }
 
-const ASSET_SELECT_WIDTH = 220
+const ASSET_SELECT_WIDTH = 320
 const ARG_WIDTH = 50
 
 export default (props: IProps) => {
@@ -123,7 +122,7 @@ export default (props: IProps) => {
         
         return (
             <div style={{display: 'flex', flexDirection: 'column'}}>
-                <span style={{fontSize: 11.5, marginBottom: 3}}>ARG #{index+1}</span>
+                <span style={{fontSize: 11.5, marginBottom: 3}}>ARGUMENT VALUE #{index+1}</span>
                 <input 
                     value={argumentsValues[index] || ''}
                     onChange={({ target: { value } }) => {
@@ -143,28 +142,30 @@ export default (props: IProps) => {
     }
 
     const renderNewAssetSelect = (list: AvailableAssetCollection) => {
+        const options = list.map((asset: AvailableAssetModel) => {
+            return {
+                value: asset.get().assetType(),
+                label: asset.get().label()
+            }
+        })
+
+        const asset = assetValue ?  list.findByAssetType(assetValue): null
+
         return (
         <div style={{display: 'flex', flexDirection: 'column', width: ASSET_SELECT_WIDTH}}>
-                <span style={{fontSize: 11.5, marginBottom: 3}}>{'NEW ASSET'}</span>
-                <select 
+                <span style={{fontSize: 11.5, marginBottom: 3}}>NEW ASSET</span>
+                <Select
                     defaultValue={undefined}
-                    onChange={({ target: { value } }) => {
-                        setAssetValue(value)
+                    isSearchable={true}
+                    options={options}
+                    onChange={(e: any) => {
+                        setAssetValue(e.value)
                         setDependencyValues([])
                         setArgumentsValues([])
                     }}
-                    style={{width: '100%', height: 24, outline: 'none', backgroundColor: BLACK, color: 'white'}}>
-                    {!assetValue && <option value={undefined}></option>}
-                    {list.map((asset: AvailableAssetModel) => {
-                        return (
-                            <option 
-                                key={asset.get().assetType()} 
-                                value={asset.get().assetType()}
-                            >{asset.get().label()}</option>
-                        )
-                    })}
-                </select>
-            {assetValue && <span style={{color: 'white', fontSize: 10.5, marginTop: 7, fontStyle: 'italic'}}>{list.findByAssetType(assetValue).get().description()}</span>}
+                    styles={selectStyle}
+                />
+                {asset && <span style={{color: 'white', fontSize: 10.5, marginTop: 7, fontStyle: 'italic'}}>{asset.get().description()}</span>}
             </div>
         )
     }
@@ -175,12 +176,26 @@ export default (props: IProps) => {
         if (address){
             asset = list.findByAddress(address)
         }
+
+        const options = list.map((asset: AssetModel) => {
+            return {
+                value: asset.get().addressString(),
+                label: asset.get().ressource().get().label()
+            }
+        })
+
+        const ressource = asset ? asset.get().ressource() : null
+
         return (
             <div style={{display: 'flex', flexDirection: 'column', width: ASSET_SELECT_WIDTH}}>
-                    <span style={{fontSize: 11.5, marginBottom: 3}}>{'NEW ASSET'}</span>
-                    <select 
+                    <span style={{fontSize: 11.5, marginBottom: 3}}>ARGUMENT ASSET #{index +1}</span>
+                    <Select
                         defaultValue={undefined}
-                        onChange={({ target: { value } }) => {
+                        isSearchable={true}
+                        options={options}
+                        onChange={(e: any) => {
+                            const value = e.value
+
                             if (dependencyValues.length <= index){
                                 setDependencyValues(dependencyValues.concat([value]))
                             } else {
@@ -189,18 +204,9 @@ export default (props: IProps) => {
                                 setDependencyValues(newCpy)
                             }
                         }}
-                        style={{width: '100%', height: 24, outline: 'none', backgroundColor: BLACK, color: 'white'}}>
-                        {!address && <option key={'def'} value={undefined}></option>}
-                        {list.map((asset: AssetModel) => {
-                            return (
-                                <option 
-                                    key={asset.get().address().get().printableID()} 
-                                    value={asset.get().addressString()}
-                                >{asset.get().address().get().printableID()}</option>
-                            )
-                        })}
-                    </select>
-                {asset && <span style={{color: 'white', fontSize: 10.5, marginTop: 7, fontStyle: 'italic'}}>{ressources.get().availableAssets().findByAssetType(asset.get().address().get().assetType()).get().description()}</span>}
+                        styles={selectStyle}
+                    />
+                {ressource && <span style={{color: 'white', fontSize: 10.5, marginTop: 7, fontStyle: 'italic'}}>{ressource.get().description()}</span>}
                 </div>
             )
     }

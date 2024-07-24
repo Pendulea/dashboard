@@ -13,7 +13,6 @@ export default {
     layout: {
         background: {color: '#111111'},
         textColor: '#EEEEEE',
-        
     },
     grid: {
         vertLines: {

@@ -10,7 +10,7 @@ import React from 'react'
 interface IProps {
     style?: any
     multiColumn: boolean
-    onSubmit: (set: SetModel | null, asset: AssetModel | null, columns: string[]) => void
+    onSubmit?: (set: SetModel | null, asset: AssetModel | null, columns: string[]) => void
     onChange?: (set: SetModel | null, asset: AssetModel | null, columns: string[]) => void
     timeframe: number
 }
@@ -55,20 +55,22 @@ const AddAsset = (props: IProps) => {
     }
 
     
+    const hasSubmit = props.onSubmit !== undefined
+
     return (
         <div style={Object.assign({}, props.style)}>
             <div style={{display: 'flex', flexDirection: 'row', width: '100%'}}>
-                <div style={{width: '13%'}}>
+                <div style={{width: '20%'}}>
                     {renderSelectSet()}
                 </div>
-                <div style={{width: '20%', marginLeft: 20}}>
+                <div style={{width: hasSubmit ? '30%' : '37%', paddingLeft: 20}}>
                     {renderSelectAsset()}
                 </div>
-                {selectedAsset && selectedAsset.get().dataType() !== 3 && <div style={{width: '20%',  marginLeft: 20, }}>
+                {selectedAsset && (selectedAsset.get().dataType() !== 3 || props.multiColumn) && <div style={{width: hasSubmit ? '30%' : '37%',  paddingLeft: 20}}>
                     <SelectColumns 
-                        omitColumns={['time']}
+                        omitColumns={props.multiColumn ? [] : ['time']}
                         asset={selectedAsset}
-                        maxSelectable={props.multiColumn ? undefined : 1}
+                        maxSelectable={props.multiColumn ? 10000 : 1}
                         columns={selectedColumns}
                         onChange={(columns) => {
                             const filteredColumns = props.multiColumn ? columns : [columns[0]]
@@ -77,13 +79,13 @@ const AddAsset = (props: IProps) => {
                         }}
                     />
                 </div>}
-                {props.onSubmit && <div style={{display:'flex', justifyContent: 'center'}}>
+                {hasSubmit && <div style={{display:'flex', justifyContent: 'center'}}>
                     {selectedAsset && <Button 
                         color={'blue'}
                         title={'Add chart'}
                         style={{width: 100, height: 30, marginLeft: 20, marginTop: 19}}
                         onClick={() => {
-                            props.onSubmit(selectedSet, selectedAsset, selectedColumns)
+                            props.onSubmit && props.onSubmit(selectedSet, selectedAsset, selectedColumns)
                         }}
                     />}
                 </div>}

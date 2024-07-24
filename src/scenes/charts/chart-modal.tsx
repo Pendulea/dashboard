@@ -210,13 +210,19 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
           })
         }
 
-          <h1 style={{fontSize: 22, padding: 0, margin: 0}}>New chart</h1>
-          <AddAsset
-            timeframe={TIMEFRAME}
-            onSubmit={addChart}
-            style={{marginTop: dataAffiner.charts.length > 0 ? 40 : 0, paddingLeft: 20, borderTop: '1px solid white'}}
-            multiColumn={false}
-          />
+          <div style={{width: '100%', paddingLeft: 20, borderTop: '1px solid white'}}>
+            <h1 style={{fontSize: 22, padding: 0, margin: 0}}>New chart</h1>
+            <div style={{width:'80%', marginTop: dataAffiner.charts.length > 0 ? 40 : 0}}>
+              <AddAsset
+                timeframe={TIMEFRAME}
+                onSubmit={addChart}
+                style={{marginTop: 20}}
+                multiColumn={false}
+              />
+            </div>
+          </div>
+
+          
           <div style={{height: 120}}></div>
         </div>
       </ModalWrapper>

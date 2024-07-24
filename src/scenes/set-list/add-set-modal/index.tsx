@@ -1,13 +1,13 @@
 import React from 'react';
 import styled from 'styled-components';
-import Modal from '../../components/modal';
-import DropdownAlert from '../../components/dropdown-alert';
+import Modal from '../../../components/modal';
+import DropdownAlert from '../../../components/dropdown-alert';
 import Select from 'react-select';
-import { customStyles } from './select-style';
-import cryptoList from '../../constants/crypto-list';
-import sets, { SetModel } from '../../models/set';
-import Button from '../../components/button';
-import { showAlertMessage } from '../../constants/msg';
+import cryptoList from '../../../constants/crypto-list';
+import sets, { SetModel } from '../../../models/set';
+import Button from '../../../components/button';
+import { showAlertMessage } from '../../../constants/msg';
+import selectStyle from '../../../components/select-style';
 
 interface AddPairModalProps {
     onClose: () => void;
@@ -48,9 +48,7 @@ const AddPairModal: React.FC<AddPairModalProps> = ({ onClose, dropdownRef, show 
 
         return (
             <Select
-                className="basic-single"
-                classNamePrefix="select"
-                styles={customStyles} 
+                styles={selectStyle} 
                 isSearchable={true}
                 options={options}
                 onChange={(selectedOption) => {
@@ -73,9 +71,7 @@ const AddPairModal: React.FC<AddPairModalProps> = ({ onClose, dropdownRef, show 
         <div style={{width: 300, marginTop: 20}}>
             <span style={{fontSize: 11}}>TOKEN B:</span>
             <Select
-                className="basic-single"
-                classNamePrefix="select"
-                styles={customStyles} 
+                styles={selectStyle}
                 isSearchable={true}
                 isDisabled={true}
                 defaultValue={{value: 'USDT', label: 'USDT (Tether)'}}

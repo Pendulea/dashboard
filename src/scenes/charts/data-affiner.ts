@@ -21,16 +21,6 @@ export interface IAssetRef {
     count_fetch: number
 }
 
-function isTimeSorted(array: TDataPoint[]) {
-    for (let i = 0; i < array.length - 1; i++) {
-        if (array[i].time > array[i + 1].time) {
-            return false;
-        }
-    }
-    return true;
-}
-
-
 export class DataAffiner {
     
 
@@ -53,7 +43,6 @@ export class DataAffiner {
     
         return -1; // Target not found
     }
-
 
     charts: { sub_charts: IDataLine[] }[] = []
     assets: IAssetRef[] = []
