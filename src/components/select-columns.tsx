@@ -28,7 +28,6 @@ const SelectColumns = (props: IProps) => {
               return true
             }
           })
-          
         return list.map((column) => {
             return {
                 value: column,

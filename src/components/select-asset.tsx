@@ -21,7 +21,7 @@ const SelectAsset = (props: IProps) => {
 
     const getOptions = useMemo(() => {
         if (set){
-            return set.get().assets().filterByStartedSync(props.timeframe).map((asset: AssetModel) => {
+            return set.get().assets().orderByAddressAsc().filterByStartedSync(props.timeframe).map((asset: AssetModel) => {
                 const ressource = asset.get().ressource()
                 const label = ressource.get().dependencies().length > 0 ? asset.get().address().get().printableID() : ressource.get().label()
                 return {
@@ -34,15 +34,16 @@ const SelectAsset = (props: IProps) => {
         }
     }, [set, props.timeframe])
 
+    const ressource = selectedAsset ? selectedAsset.get().ressource() : null
 
     return (
         <div style={{display: 'flex', flexDirection: 'column'}}>
             <span style={{fontSize: 11, marginBottom: 3}}>ASSET:</span>
             <Select
                 value={
-                    selectedAsset ? {
+                    selectedAsset && ressource ? {
                         value: selectedAsset.get().addressString(),
-                        label: selectedAsset.get().ressource().get().label()
+                        label: ressource.get().dependencies().length > 0 ? selectedAsset.get().address().get().printableID() : ressource.get().label()
                     } : undefined
                 }
                 placeholder={"Select asset"}

@@ -5,7 +5,6 @@ import SelectSet from '../../components/select-set'
 import SelectAsset from '../../components/select-asset'
 import SelectColumns from '../../components/select-columns'
 import Button from '../../components/button'
-import React from 'react'
 
 interface IProps {
     style?: any
@@ -23,8 +22,7 @@ const AddAsset = (props: IProps) => {
 
     const renderSelectSet = () => (
         <SelectSet 
-            sets={sets}   
-            timeframe={props.timeframe}
+            sets={sets.filterContainingTimeframe(props.timeframe)}   
             selectedSet={selectedSet}
             onChange={(set) => {
                 setSelectedSet(set)
@@ -81,12 +79,14 @@ const AddAsset = (props: IProps) => {
                 </div>}
                 {hasSubmit && <div style={{display:'flex', justifyContent: 'center'}}>
                     {selectedAsset && <Button 
-                        color={'blue'}
-                        title={'Add chart'}
-                        style={{width: 100, height: 30, marginLeft: 20, marginTop: 19}}
+                        color='black'
+                        icon='/images/plus-white.png'
+                        title=''
+                        style={{width: 60, height: 30, marginTop: 19, marginLeft: 20}}
                         onClick={() => {
                             props.onSubmit && props.onSubmit(selectedSet, selectedAsset, selectedColumns)
                         }}
+                        iconStyle={{width: 14, height: 14}}
                     />}
                 </div>}
             </div>

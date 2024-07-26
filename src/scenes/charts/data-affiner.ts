@@ -23,7 +23,6 @@ export interface IAssetRef {
 
 export class DataAffiner {
     
-
     binarySearchTick = (array: TDataPoint[], targetTime: number): number => {
         let left = 0;
         let right = array.length - 1;
@@ -46,15 +45,43 @@ export class DataAffiner {
 
     charts: { sub_charts: IDataLine[] }[] = []
     assets: IAssetRef[] = []
-
+    
+    private loading = false
     private last_fetch_from_time: number = 0
     private timeframe: number = 0
 
     setTimeframe = (timeframe: number) => {
         if (timeframe > 0 && timeframe !== this.timeframe){
             this.timeframe = timeframe
+            this.assets.forEach(a => {
+                a._data = []
+                a.count_fetch = 0
+                a.data = []
+            })
+            this.charts.forEach(c => {
+                c.sub_charts.forEach(sc => {
+                    sc.max_value = 0
+                })
+            })
+            this.last_fetch_from_time = this.latestConsistencyFromAssets()
         }
     }
+
+    latestConsistencyFromAssets = () => {
+        let latest = 0
+        this.assets.forEach(a => {
+            const assetModel = sets.assetsByAddresses([a.address]).first() as AssetModel
+            if (!assetModel)
+                return
+            const c = assetModel.get().consistencies().findByTimeframe(this.timeframe)
+            if (!c)
+                return
+            const range = c.get().range()
+            latest = Math.max(latest, range[1])
+        })
+        return latest
+    }
+
 
     getMotherChartIndex =(chart: IDataLine) => {
         return this.charts.findIndex(c => c.sub_charts[0].asset_address === chart.asset_address && c.sub_charts[0].column === chart.column)
@@ -162,9 +189,10 @@ export class DataAffiner {
     }
 
     fetchTicks = async (sync: boolean) => {
-        if (this.assets.length === 0){
+        if (this.assets.length === 0 || this.loading){
             return null
         }
+        this.loading = true
 
         const newLastFetchFromTime = sync ? this.last_fetch_from_time : this.last_fetch_from_time - (1500 * this.timeframe)
 
@@ -229,6 +257,7 @@ export class DataAffiner {
         }
 
         this.last_fetch_from_time = newLastFetchFromTime
+        this.loading = false
         return null   
     }
 
@@ -285,5 +314,4 @@ export class DataAffiner {
     }
 } 
 
-const dataAffiner = new DataAffiner()
-export default dataAffiner
+export default DataAffiner

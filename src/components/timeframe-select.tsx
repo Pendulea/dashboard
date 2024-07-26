@@ -1,24 +1,24 @@
 import{ useState } from 'react';
 import CreatableSelect from 'react-select/creatable';
-import { Format } from '../../utils';
-import { SetModel } from '../../models/set';
-import { FLASHY_GREEN, GREEN, RED } from '../../constants';
+import { Format } from '../utils';
+import { FLASHY_GREEN, GREEN, RED } from '../constants';
 import _ from 'lodash';
-import selectStyle from '../../components/select-style';
+import selectStyle from './select-style';
 
 
 interface IProps {
-    set: SetModel
-    defaultValue?: number 
+    timeframes: number[]
+    selectedTimeframe: number
     onSelect: (timeframe: number) => void
-    onAdd: (resp : null | string) => void
+    onAdd?: (value: number) => Promise<void>
 }
 
-const TimeframeSelect = ({ set, onSelect, onAdd, defaultValue }: IProps ) => {
-  const timeframes = set.get().availableTimeframes()
+const TimeframeSelect = ({ onSelect, onAdd, selectedTimeframe, timeframes }: IProps ) => {
   const [loading, setLoading] = useState(false);
-
   const handleCreate = async (inputValue: string) => {
+    if (!onAdd) {
+      return
+    }
     setLoading(true);
     try {
       const value = Format.labelToTimeFrame(inputValue);
@@ -26,10 +26,9 @@ const TimeframeSelect = ({ set, onSelect, onAdd, defaultValue }: IProps ) => {
         alert('Timeframe already exists');
         return;
       }
-
-      onAdd(await set.addTimeframe(value))
+      await onAdd(value);
     } catch (e) {
-      onAdd('Invalid timeframe')
+      alert('Invalid timeframe');
     } finally {
       setLoading(false);
     }
@@ -48,8 +47,11 @@ const TimeframeSelect = ({ set, onSelect, onAdd, defaultValue }: IProps ) => {
         isLoading={loading} 
         options={options} 
         styles={selectStyle} 
-        placeholder="Select/Add a timeframe"
+        placeholder={"Select" + onAdd ? "/Add a timeframe" : ""}
         formatCreateLabel={(inputValue) => {
+          if (!inputValue) {
+            return null;
+          }
           let color = FLASHY_GREEN
           let extra = ''
           try {
@@ -67,12 +69,11 @@ const TimeframeSelect = ({ set, onSelect, onAdd, defaultValue }: IProps ) => {
           }
           return <span>Add <span style={{color}}>{inputValue}</span> {extra}</span>}
         }
-        onCreateOption={handleCreate} 
-        defaultValue={defaultValue ? {
-          value: defaultValue,
-          label: Format.timeFrameToLabel(defaultValue) + ' (' + Format.timeFrameToLabel(defaultValue, true) + ')',
-        
-        } : undefined}
+        onCreateOption={onAdd ? handleCreate : undefined}  
+        defaultValue={{
+          value: selectedTimeframe,
+          label: Format.timeFrameToLabel(selectedTimeframe) + ' (' + Format.timeFrameToLabel(selectedTimeframe, true) + ')',
+        }}
         onChange={(selected) => {
           selected && onSelect(selected.value);
         }}

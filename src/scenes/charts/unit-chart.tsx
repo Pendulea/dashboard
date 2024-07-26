@@ -8,7 +8,7 @@ import React from "react"
 import { AssetModel } from "../../models/asset"
 import { UnitChartRefType } from "./interfaces"
 import styled from "styled-components"
-import dataAffiner, { IDataLine } from "./data-affiner"
+import dataAffiner, { DataAffiner, IDataLine } from "./data-affiner"
 import { IUnitData } from "../../models/tick/unit"
 import sets from "../../models/set"
 import Loading from "../../components/loader"
@@ -22,9 +22,10 @@ interface IUnitChartProps {
 
 const UnitToolTip = React.forwardRef((props: {
     ticks: IUnitData[]
-    asset: AssetModel
+    asset: AssetModel,
+    dataAffiner: DataAffiner
 }, ref) => {
-    const { ticks, asset } = props
+    const { ticks, asset, dataAffiner} = props
 
     const [selectedTime, setSelectedTime] = React.useState<number | null>(null)
 
@@ -67,7 +68,7 @@ const UnitToolTip = React.forwardRef((props: {
 
 
 const UnitChart =  React.forwardRef<any, IChartOptions & IUnitChartProps>((props, ref)  => {
-    const { unit } = props
+    const { unit, dataAffiner } = props
     const candleSerieRef = useRef<ISeriesApi<'Candlestick'>>(null);
     const chartRef = useRef<IChartApi>(null);
     const toolTipRef = useRef<{
@@ -133,6 +134,7 @@ const UnitChart =  React.forwardRef<any, IChartOptions & IUnitChartProps>((props
                 <UnitToolTip 
                     ticks={getTicks()}
                     asset={asset}
+                    dataAffiner={dataAffiner}
                     ref={toolTipRef}
                 />
             </div>

@@ -1,27 +1,40 @@
 import styled from "styled-components"
-import { SetModel } from "../../models/set"
-import { Format } from "../../utils"
-import TimeframeSelect from "./timeframe-select"
-import AddAsset from "./add-asset-modal/add-asset"
-import { AssetCollection, AssetModel } from "../../models/asset"
+import { SetModel } from "../../../models/set"
+import { Format } from "../../../utils"
+import TimeframeSelect from "../../../components/timeframe-select"
+import { AssetCollection, AssetModel } from "../../../models/asset"
 import AssetCell from "./asset-cell"
-import Button from "../../components/button"
+import Button from "../../../components/button"
+import { showAlertMessage } from "../../../constants/msg"
+import DropdownAlert from "../../../components/dropdown-alert"
+import { useState } from "react"
+import { MIN_TIME_FRAME } from "../../../constants"
 
 
 interface IProps {
     set: SetModel
-    onSelectTimeframe: (timeframe: number) => void
-    timeframe: number
+    dropdownRef: React.RefObject<DropdownAlert>
     onOpenAddAssetModal?: () => void
 }
 
 const SetCell = (props:IProps) => {
-    const { onSelectTimeframe, timeframe, set } = props
+    const { set } = props
+
+    const [timeframe, setTimeframe] = useState(MIN_TIME_FRAME)
 
     const id = set.get().settings().get().id()
     const symbol0 = id[0]
     const symbol1 = id[1]
 
+
+    const onAddTimeframe = async (value: number) => {
+        const err = await set.addTimeframe(value)
+        if (err){
+            showAlertMessage(props.dropdownRef).error(err)
+        } else {
+            showAlertMessage(props.dropdownRef).success()
+        }
+    }
 
     const renderAssetList = () => {
         const CHUNK = 5
@@ -74,7 +87,6 @@ const SetCell = (props:IProps) => {
     return (
         <div style={{borderBottom: `1px solid white`, paddingBottom: 30}}>
             <SetCellContainer>
-
                 <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
                     
                     <div style={{display: 'flex', flexDirection: 'row'}}>
@@ -98,10 +110,10 @@ const SetCell = (props:IProps) => {
                     <div style={{width: 200, marginTop: 0, display: 'flex', flexDirection: 'column', marginRight: 10}}>
                         <span style={{ marginRight: 10}} className="sectitle">TIMEFRAME:</span>
                         <TimeframeSelect 
-                            onSelect={(timeframe: number) => onSelectTimeframe(timeframe)}
-                            set={set}
-                            onAdd={(resp) => alert(resp)}
-                            defaultValue={timeframe}
+                            onSelect={(timeframe: number) => setTimeframe(timeframe)}
+                            onAdd={onAddTimeframe}
+                            selectedTimeframe={timeframe}
+                            timeframes={set.get().availableTimeframes()}
                         />
                     </div>
                 </div>

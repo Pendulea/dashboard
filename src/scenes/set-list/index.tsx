@@ -3,42 +3,33 @@ import { Header } from "../../containers/header"
 import NoScrollWrapper from "../../components/no-scroll-container"
 import Footer from "../../containers/footer"
 import DropdownAlert from "../../components/dropdown-alert"
-import { useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import sets, { SetModel } from "../../models/set"
 import _ from "lodash"
-import SetCell from "./set-cell"
+import SetCell from "./set-cell/index"
 import AddAssetModal from "./add-asset-modal"
 import AddSetModal from "./add-set-modal/index"
 import BuildCSVModal from "./build-csv-modal"
 import ChartModal from "../charts/chart-modal"
 
 
-const SetList = (props: {onClickAddAsset: (setID: string)=> void}) => {
+const SetList = (props: {
+  onClickAddAsset: (setID: string)=> void
+  dropdownRef: React.RefObject<DropdownAlert>
+}) => {
 
   useAcey([
     sets
   ] as any)
 
-  const [selectedTimeframe, setSelectedTimeframe] = useState(Object.assign({}, ...sets.map((set: SetModel) => {
-      return {[set.get().settings().get().idString()]: set.get().availableTimeframes()[0]}
-  })))
-
-  const onSelectTimeframe = (set: SetModel, timeframe: number) => {
-    const cpy = _.cloneDeep(selectedTimeframe)
-    cpy[set.get().settings().get().idString()] = timeframe
-    setSelectedTimeframe(cpy)
-}
-
   return (
     <div>
         {sets.orderByRank().map((set: SetModel) => {
           const setID = set.get().settings().get().idString()
-          const timeframe = selectedTimeframe[setID]
           return <div style={{width: '100%'}} key={'set' + setID}>
               <SetCell 
                   set={set}
-                  onSelectTimeframe={(timeframe: number) => onSelectTimeframe(set, timeframe)}
-                  timeframe={timeframe}
+                  dropdownRef={props.dropdownRef}
                   onOpenAddAssetModal={() => props.onClickAddAsset(setID)}
               />
           </div>
@@ -66,6 +57,7 @@ const Index = () => {
             }} />
             <SetList 
               onClickAddAsset={(setID) => setAddAssetModal(setID)}
+              dropdownRef={dropdownRef}
             />
               <div style={{height: 35}}/>
               <Footer />

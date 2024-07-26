@@ -10,7 +10,7 @@ import { UnitChartRefType } from "./interfaces"
 import styled from "styled-components"
 import { Format } from "../../utils"
 import Checkbox from "../../components/checkbox"
-import dataAffiner, { IDataLine } from "./data-affiner"
+import dataAffiner, { DataAffiner, IDataLine } from "./data-affiner"
 import { IQuantityData } from "../../models/tick/quantity"
 import sets from "../../models/set"
 import Loading from "../../components/loader"
@@ -86,8 +86,9 @@ const QuantityToolTip = React.forwardRef((props: {
     category: QuantityCategory
     ticks: IQuantityData[]
     isNet: boolean
+    dataAffiner: DataAffiner
 }, ref) => {
-    const { asset, ticks } = props
+    const { asset, ticks, dataAffiner } = props
 
     const [selectedTime, setSelectedTime] = React.useState<number | null>(null)
 
@@ -125,7 +126,7 @@ const QuantityToolTip = React.forwardRef((props: {
 
 
 const QuantityChart =  React.forwardRef<any, IChartOptions & IUnitChartProps>((props, ref)  => {
-    const { chart } = props
+    const { chart, dataAffiner } = props
 
     const histoSerieRef = useRef<ISeriesApi<'Histogram'>>(null);
     const chartRef = useRef<IChartApi>(null);
@@ -196,6 +197,7 @@ const QuantityChart =  React.forwardRef<any, IChartOptions & IUnitChartProps>((p
                     asset={asset}
                     category={category}
                     isNet={isNet}
+                    dataAffiner={dataAffiner}
                 />
             </div>
         )

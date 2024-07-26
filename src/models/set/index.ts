@@ -162,6 +162,21 @@ export class SetCollection extends Collection {
         return new AssetCollection(assets, {})
     }
 
+    filterContainingTimeframe = (timeframe: number) => {
+        return this.filter((set: SetModel) => {
+            return set.get().availableTimeframes().includes(timeframe)
+        }) as SetCollection
+    }
+
+    allTimeframes = () => {
+        let timeframes: number[] = []
+        this.forEach((set: SetModel) => {
+            timeframes = _.union(timeframes, set.get().availableTimeframes())
+        })
+        return timeframes
+    }
+
+    
     commonTimeframes = () => {
         const first = this.first() as SetModel
         if (!first){

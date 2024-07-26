@@ -11,7 +11,7 @@ import { Format, generateRandomShade } from "../../utils"
 import AddAsset from "./add-asset"
 import sets, { SetModel } from "../../models/set"
 import Checkbox from "../../components/checkbox"
-import dataAffiner, { IAssetRef, TDataPoint , IDataLine } from "./data-affiner"
+import dataAffiner, { IAssetRef, TDataPoint , IDataLine, DataAffiner } from "./data-affiner"
 import { IPointData } from "../../models/tick/point"
 import Loading from "../../components/loader"
 
@@ -61,12 +61,14 @@ const PointToolTip = React.forwardRef((props: {
     isMaxInTicks: boolean,
     timeframe: number,
     loading: boolean
+    dataAffiner: DataAffiner
 }, ref) => {
 
     const {
         isPercent,
         isMaxInTicks,
         timeframe,
+        dataAffiner,
         charts
     } = props;
 
@@ -77,7 +79,6 @@ const PointToolTip = React.forwardRef((props: {
     }), [])
 
     const [selectedTime, setSelectedTime] = React.useState<number | null>(null)
-
 
     const renderItem = (asset: AssetModel, chart: IDataLine, ref: IAssetRef) => {
         if (ref.data.length === 0){
@@ -141,7 +142,7 @@ interface IPointChartProps {
 }
 
 const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((props, ref)  => {
-    const { timeframe } = props
+    const { timeframe, dataAffiner } = props
     const lineSerieRef = useRef<ISeriesApi<'Line'>>(null);
     const chartRef = useRef<IChartApi>(null);
     const toolTipRef = useRef<{
@@ -240,6 +241,7 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
 
             return (
                 <LineSeries
+                    ref={idx == 0  ? lineSerieRef : undefined}
                     key={'bffwfw'+idx+1}
                     data={data}
                     reactive={true}
@@ -264,6 +266,7 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
                 isMaxInTicks={isMaxInTicks}
                 timeframe={timeframe}
                 loading={props.loading}
+                dataAffiner={dataAffiner}
             />
             <Chart 
                 onCrosshairMove={handleCrosshairMove} 
@@ -276,21 +279,26 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
                 />
                 {renderLines()}
             </Chart>
-            {props.charts.length < 5 && <AddAsset 
-                timeframe={timeframe}
-                onSubmit={(set: SetModel | null, asset: AssetModel | null, columns: string[]) => {
-                    if (asset){
-                        const idx = dataAffiner.getMotherChartIndex(props.charts[0])
-                        if (idx === -1){
-                            return
-                        }
-                        dataAffiner.addSubChart(idx, asset.get().addressString(), columns.length> 0 ? columns[0] : '')
-                        props.onRefreshAssets && setTimeout(props.onRefreshAssets, 50)
-                    }
-                }}
-                multiColumn={false}
-                style={{marginTop: 20}}
-            />}
+            <div style={{display: 'flex', flexDirection: 'row', width:'100%', marginTop: 30, marginBottom: 30}}>
+                <span style={{fontSize: 12, fontWeight: 700, marginRight: 30, marginLeft: 20, marginTop: 23}}>ADD NEW LINE</span>
+                <div style={{width: '85%'}}>
+                    <AddAsset 
+                        timeframe={timeframe}
+                        onSubmit={(set: SetModel | null, asset: AssetModel | null, columns: string[]) => {
+                            if (asset){
+                                const idx = dataAffiner.getMotherChartIndex(props.charts[0])
+                                if (idx === -1){
+                                    return
+                                }
+                                dataAffiner.addSubChart(idx, asset.get().addressString(), columns.length> 0 ? columns[0] : '')
+                                props.onRefreshAssets && setTimeout(props.onRefreshAssets, 50)
+                            }
+                        }}
+                        multiColumn={false}
+                    />
+                </div>
+            </div>
+
             {renderValueDisplayMenu()}
             {renderPercentTypeMaxMenu()}
         </div>

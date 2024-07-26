@@ -5,7 +5,6 @@ import selectStyle from "./select-style";
 
 interface IProps {
     sets: SetCollection
-    timeframe: number
     onChange?: (set: SetModel) => void
     selectedSet: SetModel | null
 }
@@ -20,7 +19,7 @@ const SelectSet = (props: IProps) => {
     }
 
     const getOptions = useMemo(() => {
-        return sets.map((set: SetModel) => {
+        return sets.orderByRank().map((set: SetModel) => {
             const idStr = set.get().settings().get().idString()
             const id = set.get().settings().get().id()
             return {

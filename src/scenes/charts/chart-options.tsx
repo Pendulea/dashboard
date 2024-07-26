@@ -1,4 +1,5 @@
 import { CrosshairMode, LogicalRange, MouseEventParams } from "lightweight-charts";
+import DataAffiner from "./data-affiner";
 
 export interface IChartOptions {
     onRefreshAssets?: () => void
@@ -6,6 +7,7 @@ export interface IChartOptions {
     onChangeCrossHair?: (e: MouseEventParams) => void
     displayTimeScale: boolean
     loading: boolean
+    dataAffiner: DataAffiner
 }
 
 export default {

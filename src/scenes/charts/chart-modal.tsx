@@ -12,16 +12,16 @@ import QuantityChart from './quantity-chart';
 import PointChart from './point-chart';
 import _ from 'lodash';
 import AddAsset from './add-asset';
-import dataAffiner, { IDataLine } from './data-affiner';
+import dataAffiner, { DataAffiner, IDataLine } from './data-affiner';
+import SelectTimeframe from '../../components/select-timeframe';
+import { MIN_TIME_FRAME } from '../../constants';
+import TimeframeSelect from '../../components/timeframe-select';
 
 interface ChartModalProps {
     onClose: () => void;
     show: boolean
     dropdownRef: React.RefObject<DropdownAlert>
 }
-
-const TIMEFRAME =  86_400_000
-dataAffiner.setTimeframe(TIMEFRAME)
 
 type ChartTypeCategory = 'unit' | 'quantity'| 'point'
 
@@ -34,6 +34,13 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
 
     const [loading, setLoading] = useState<boolean>(false)
     const chartRefs = useRef<{[key in string]: UnitChartRefType}>({})
+    const dataAffinerRef = useRef(new DataAffiner())
+    const [selectedTimeframe, setSelectedTimeframe] = useState<number>(MIN_TIME_FRAME)
+
+    useEffect(() => {
+      dataAffinerRef.current.setTimeframe(selectedTimeframe)
+      onRefreshConcernedAssets()
+    }, [selectedTimeframe])
 
     const getChartRefs = (): {[key in string]: UnitChartRefType} => {
         return chartRefs.current
@@ -44,34 +51,28 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
     }
   
     const onRefreshConcernedAssets = async () => {
-      if (loading){
-        return
-      }
       setLoading(true)
-      const notSync = dataAffiner.assets.every(a => a.count_fetch === 0)
-      const err = await dataAffiner.fetchTicks(!notSync)
+      const notSync = dataAffinerRef.current.assets.every(a => a.count_fetch === 0)
+      const err = await dataAffinerRef.current.fetchTicks(!notSync)
       if (err){
         showAlertMessage(dropdownRef).error(err)
       }
       setTimeout(() => setLoading(false), 50)
     }
 
-    const fetchMore = _.debounce(async () => {
-      if (loading){
-        return
-      }
+    const fetchMore = _.throttle(async () => {
       setLoading(true)
-      const err = await dataAffiner.fetchTicks(false)
+      const err = await dataAffinerRef.current.fetchTicks(false)
       if (err){
         showAlertMessage(dropdownRef).error(err)
       }
       setLoading(false)
-    }, 500)
+    }, 300)
 
     const addChart = async (set: SetModel | null, asset: AssetModel | null, columns: string[]) => {
       if (asset){
         try {
-          dataAffiner.addChart(asset.get().addressString(), columns.length > 0 ? columns[0] : '')
+          dataAffinerRef.current.addChart(asset.get().addressString(), columns.length > 0 ? columns[0] : '')
           await onRefreshConcernedAssets()
         }catch (err){
           alert(err)
@@ -79,10 +80,36 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
       }
     } 
 
+    const onAddTimeframeToEverySet = async (timeframe: number) => {
+     const promises = sets.map((set: SetModel) => set.addTimeframe(timeframe))as Promise<string | null>[]
+      const errs = await Promise.all(promises)
+      const err = errs.find(e => e !== null)
+      if (err){
+        showAlertMessage(dropdownRef).error(err)
+      } else {
+        showAlertMessage(dropdownRef).success()
+      }
+    }
+
     const renderHeader = () => {
         return (
-            <div onClick={onClose} style={{cursor: 'pointer', display: 'flex', flexDirection:'row', width: '100%',position:'fixed', zIndex: 10000, backgroundColor: '#121212'}}>
-                <img style={{width: 16, height: 16, padding: 10}} src={'/images/cross-white.png'}/>
+            <div  style={{display: 'flex', flexDirection:'row', width: '100%', height: 50, position:'fixed', zIndex: 10000, backgroundColor: '#121212', borderBottom: '1px solid white'}}>
+                <div  style={{width: '33.3%'}}>
+                  <img onClick={onClose} style={{width: 16, height: 16, padding: 17, cursor: 'pointer'}} src={'/images/cross-white.png'}/>
+                </div>
+                <div style={{width: '33.3%', height: '100%', display: 'flex', alignItems: 'center',justifyContent: 'center' }}>
+                  <span style={{fontSize: 13, fontWeight: 600}}>DATA VISUALISATION</span>
+                </div>
+                <div style={{width: '33.3%', display: 'flex', justifyContent: 'flex-end', paddingRight: 10, paddingTop: 9}}>
+                  <div style={{width: 150}}> 
+                    <TimeframeSelect 
+                      selectedTimeframe={selectedTimeframe}
+                      timeframes={sets.allTimeframes()}
+                      onSelect={(timeframe) => setSelectedTimeframe(timeframe)}
+                      onAdd={onAddTimeframeToEverySet}
+                    />
+                  </div>
+                </div>
             </div>
         )
     }
@@ -113,15 +140,17 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
       }
 
       const mainRef = getChartRef(cat, assetAddress, column)
-      if (!mainRef)
-          return
+      if (!mainRef){
+        return
+      }
 
       const dp = getCrosshairDataPoint(mainRef.serie, e)
       if (dp){
           for (const key in getChartRefs()){ 
             const ref = getChartRefs()[key]
-            if (!ref || ref === mainRef)
-                continue
+            if (!ref || ref === mainRef){
+              continue
+            }
               const chart = ref.chart
               const serie = ref.serie
               if (chart && serie){
@@ -150,6 +179,7 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
                 onChangeCrossHair={(e) => onCrossHairMove(e, CHART_KEY, chart.asset_address, chart.column)}
                 displayTimeScale={timeScale}
                 loading={loading}
+                dataAffiner={dataAffinerRef.current}
             />
         </div>
       )
@@ -167,6 +197,7 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
                 onChangeCrossHair={(e) => onCrossHairMove(e, CHART_KEY, chart.asset_address, chart.column)}
                 displayTimeScale={timeScale}
                 loading={loading}
+                dataAffiner={dataAffinerRef.current}
             />
         </div>
       )
@@ -183,8 +214,9 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
               onChangeCrossHair={(e) => onCrossHairMove(e, CHART_KEY, charts[0].asset_address, charts[0].column)}
               displayTimeScale={timeScale}
               onRefreshAssets={onRefreshConcernedAssets}
-              timeframe={TIMEFRAME}
+              timeframe={selectedTimeframe}
               loading={loading}
+              dataAffiner={dataAffinerRef.current}
             />
         </div>
       )
@@ -195,31 +227,34 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
       <ModalWrapper>
         <div style={{overflowY:'scroll', width:'100%', height:'100%'}}>
         {renderHeader()}
-        <div style={{height: 40}}></div>
-        {dataAffiner.charts.map((chart, idx) => {
+        <div style={{height: 70}} />
+        {dataAffinerRef.current.charts.map((chart, idx) => {
           const asset = sets.assetsByAddresses([chart.sub_charts[0].asset_address]).first() as AssetModel
           const column = chart.sub_charts[0].column
-
             return (
               <div key={idx} style={{display: 'flex', flexDirection: 'row', width: '100%'}}>
-                {asset.get().ressource().get().dataType() === 1  && !column && renderPriceChart(chart.sub_charts[0], idx+1 === dataAffiner.charts.length)}
-                {asset.get().ressource().get().dataType() === 2  && !column && renderVolumeChart(chart.sub_charts[0], idx+1 === dataAffiner.charts.length)}
-                {(asset.get().ressource().get().dataType() === 3 || !!column) && renderPointChart(chart.sub_charts, idx+1 === dataAffiner.charts.length)}
+                {asset.get().ressource().get().dataType() === 1  && !column && renderPriceChart(chart.sub_charts[0], idx+1 === dataAffinerRef.current.charts.length)}
+                {asset.get().ressource().get().dataType() === 2  && !column && renderVolumeChart(chart.sub_charts[0], idx+1 === dataAffinerRef.current.charts.length)}
+                {(asset.get().ressource().get().dataType() === 3 || !!column) && renderPointChart(chart.sub_charts, idx+1 === dataAffinerRef.current.charts.length)}
+                <div style={{width: '10%', display: 'flex', alignItems: 'center',justifyContent:'center'}}>
+                  <img src={'/images/cross-red.png'} style={{width: 18, height:18, padding: 10, marginBottom: 50}} />
+                </div>
               </div>
             )
           })
         }
 
-          <div style={{width: '100%', paddingLeft: 20, borderTop: '1px solid white'}}>
-            <h1 style={{fontSize: 22, padding: 0, margin: 0}}>New chart</h1>
-            <div style={{width:'80%', marginTop: dataAffiner.charts.length > 0 ? 40 : 0}}>
-              <AddAsset
-                timeframe={TIMEFRAME}
-                onSubmit={addChart}
-                style={{marginTop: 20}}
-                multiColumn={false}
-              />
-            </div>
+          <div style={{display: 'flex', flexDirection: 'row', width: '100%', paddingLeft: 20, marginTop: dataAffinerRef.current.assets.length > 0 ? 40 : 0, borderTop: dataAffinerRef.current.assets.length > 0 ? '1px solid white' : undefined}}>
+              <span style={{fontSize: 15, fontWeight: 500, marginTop: dataAffinerRef.current.assets.length > 0 ? 42 : 22}}>
+                ADD NEW CHART
+              </span>
+              <div style={{width:'80%', marginLeft: 30, marginTop: dataAffinerRef.current.assets.length > 0 ? 20 : 0}}>
+                <AddAsset
+                  timeframe={selectedTimeframe}
+                  onSubmit={addChart}
+                  multiColumn={false}
+                />
+              </div>
           </div>
 
           
