@@ -43,7 +43,7 @@ const SelectAsset = (props: IProps) => {
                 value={
                     selectedAsset && ressource ? {
                         value: selectedAsset.get().addressString(),
-                        label: ressource.get().dependencies().length > 0 ? selectedAsset.get().address().get().printableID() : ressource.get().label()
+                        label: selectedAsset.get().address().get().printableID() 
                     } : undefined
                 }
                 placeholder={"Select asset"}

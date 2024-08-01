@@ -41,6 +41,9 @@ export class AddressParsedModel extends Model {
                 const dep = this.get().dependencies()
                 if (dep){
                     depStr = dep.map((d: AddressParsedModel) => {
+                        if (d.get().dependencies()){
+                            return d.get().printableID()
+                        }
                         const r = ressources.get().availableAssets().findByAssetType(d.get().assetType())
                         return r.get().label()
                     }).join(', ')

@@ -49,7 +49,7 @@ const SelectColumns = (props: IProps) => {
 
     return (
        <div style={{display: 'flex', flexDirection: 'column'}}>
-            <span style={{fontSize: 11 * size, marginBottom: 3 * size}}>COLUMNS:</span>
+            <span style={{fontSize: 11 * size, marginBottom: 3 * size}}>COLUMN{(isMulti ? "S" : "")}:</span>
             <Select
                 value={getOptions.filter((o) => props.columns.includes(o.value))}
                 isMulti={isMulti}

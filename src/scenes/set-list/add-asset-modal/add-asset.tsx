@@ -8,6 +8,9 @@ import { showAlertMessage } from '../../../constants/msg';
 import DropdownAlert from '../../../components/dropdown-alert';
 import Select from 'react-select';
 import selectStyle from '../../../components/select-style';
+import SelectColumns from '../../../components/select-columns';
+import _ from 'lodash';
+import { myChunk } from '../../../utils/fn';
 
 
 interface IProps {
@@ -114,6 +117,7 @@ export default (props: IProps) => {
         if (d.asset.address.dependencies.length !== countDependencies || d.asset.address.arguments.length !== countArguments){
             return null
         }
+
         return d
     }
 
@@ -126,13 +130,9 @@ export default (props: IProps) => {
                 <input 
                     value={argumentsValues[index] || ''}
                     onChange={({ target: { value } }) => {
-                        if (argumentsValues.length <= index){
-                            setArgumentsValues(argumentsValues.concat([value]))
-                        } else {
-                            const newCpy = argumentsValues.slice()
-                            newCpy[index] = value
-                            setArgumentsValues(newCpy)
-                        }
+                        const newCpy = argumentsValues.slice()
+                        newCpy[index] = value
+                        setArgumentsValues(newCpy)
                     }}
                     style={{border: 'none', width: ARG_WIDTH, height: 21, outline: 'none', fontSize: 12}} 
                 />
@@ -149,7 +149,7 @@ export default (props: IProps) => {
             }
         })
 
-        const asset = assetValue ?  list.findByAssetType(assetValue): null
+        const asset = assetValue ? list.findByAssetType(assetValue): null
 
         return (
         <div style={{display: 'flex', flexDirection: 'column', width: ASSET_SELECT_WIDTH}}>
@@ -160,8 +160,9 @@ export default (props: IProps) => {
                     options={options}
                     onChange={(e: any) => {
                         setAssetValue(e.value)
-                        setDependencyValues([])
-                        setArgumentsValues([])
+                        const newAsset = list.findByAssetType(e.value)
+                        setDependencyValues(Array(newAsset.get().dependencies().length).fill(''))
+                        setArgumentsValues(Array(newAsset.get().argumentTypes().length).fill(''))
                     }}
                     styles={selectStyle}
                 />
@@ -180,7 +181,7 @@ export default (props: IProps) => {
         const options = list.map((asset: AssetModel) => {
             return {
                 value: asset.get().addressString(),
-                label: asset.get().ressource().get().label()
+                label: asset.get().address().get().dependencies() ? asset.get().address().get().printableID() : asset.get().ressource().get().label()
             }
         })
 
@@ -194,24 +195,19 @@ export default (props: IProps) => {
                         isSearchable={true}
                         options={options}
                         onChange={(e: any) => {
-                            const value = e.value
-
-                            if (dependencyValues.length <= index){
-                                setDependencyValues(dependencyValues.concat([value]))
-                            } else {
-                                const newCpy = dependencyValues.slice()
-                                newCpy[index] = value
-                                setDependencyValues(newCpy)
-                            }
+                            const newCpy = dependencyValues.slice()
+                            newCpy[index] =  e.value
+                            setDependencyValues(newCpy)
                         }}
                         styles={selectStyle}
                     />
                 {ressource && <span style={{color: 'white', fontSize: 10.5, marginTop: 7, fontStyle: 'italic'}}>{ressource.get().description()}</span>}
-                </div>
-            )
+            </div>
+        )
     }
-    
-    const renderIndicatorsExtra = () => {
+
+
+    const renderThing = () => {
         if (!assetValue){
             return null
         }
@@ -219,20 +215,53 @@ export default (props: IProps) => {
         if (!asset.isIndicator()){
             return null
         }
+
+        const list = asset.get().dependencies()
+
+
         return (
             <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
-                {asset.get().dependencies().map((dep, index) => {
-                    return (
-                        <div style={{marginTop: 20}} key={'bereefe' + index}>
-                            {renderDependencySelect(set.get().assets().filterByDataType(dep), index)}
-                        </div>
-                    )
-                })}
-                <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', marginTop: 20}}>
-                {asset.get().argumentTypes().map((argType, index) => {
-                    return <div key={'argr' + index} style={{marginLeft: index > 0 ? 20 : 0}}>{renderArgument(asset, index)}</div>
-                })}
-                </div>
+                {list.map((dep, index) => {
+                const args = myChunk(asset.get().argumentTypes(), list.length)
+
+                return (
+                    <div style={{marginTop: 20}} key={'bereefe' + index}>
+                        {renderDependencySelect(dep > 0 ? set.get().assets().filterByDataType(dep) : set.get().assets(), index)}
+                        {args[index].map((argType, index) => {
+                            if (argType === 'string' && !!dependencyValues[index] ){
+                                const localAsset = set.get().assets().findByAddress(dependencyValues[index])
+                                return (
+                                    <div key={'arg'+index} style={{marginTop: 20}}>
+                                        <SelectColumns 
+                                            maxSelectable={1}
+                                            asset={localAsset}
+                                            omitColumns={['time']}
+                                            columns={argumentsValues[index]  ? [argumentsValues[index]] : []}
+                                            onChange={(columns) => {
+                                                const value = columns[0] || ''
+                                                if (argumentsValues.length <= index){
+                                                    setArgumentsValues(argumentsValues.concat([value]))
+                                                } else {
+                                                    const newCpy = argumentsValues.slice()
+                                                    newCpy[index] = value
+                                                    setArgumentsValues(newCpy)
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                )
+
+                            } else if (argType === 'string' && !dependencyValues[index]){
+                                return null
+                            } else {
+                                return  <div key={'arg'+index} style={{marginTop:20}}>
+                                    {renderArgument(asset, index)}
+                                </div>
+                            }
+                        })}
+                    </div>
+                )
+                })} 
             </div>
         )
     }
@@ -240,7 +269,7 @@ export default (props: IProps) => {
     return (
         <div style={{display: 'flex', flexDirection: 'column'}}>
             {renderNewAssetSelect(set.get().assetsToAdd())}
-            {renderIndicatorsExtra()}
+            {renderThing()}
             {assetValue && <Button
                 title='Add'
                 color={'green'}
