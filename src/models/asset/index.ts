@@ -4,6 +4,7 @@ import { ConsistencyCollection, IConsistency } from './consistency'
 import { AvailableAssetCollection, AvailableAssetModel } from '../ressources/asset'
 import ressources from '../ressources'
 import { DATA_DELAY_TOLERANCE } from '../../constants'
+import { last } from 'lodash'
 
 export interface IAsset {
     address_string: string
@@ -13,6 +14,7 @@ export interface IAsset {
     data_type: number
     decimals: number
     min_data_date: string
+    last_read_time: number
 }
 
 const DEFAULT_ASSET: IAsset = {
@@ -22,7 +24,8 @@ const DEFAULT_ASSET: IAsset = {
     consistencies: [],
     data_type: 0,
     decimals: 0,
-    min_data_date: ''
+    min_data_date: '',
+    last_read_time: 0
 }
 
 export class AssetModel extends Model {
@@ -68,6 +71,7 @@ export class AssetModel extends Model {
             ressource: (): AvailableAssetModel => {
                 return ressources.get().availableAssets().findByAssetType(this.get().address().get().assetType())
             },
+            lastReadTime: (): Date => new Date(this.state.last_read_time)
         }
     }
 

@@ -1,5 +1,5 @@
 import {  useState } from "react"
-import { FLASHY_GREEN, GOLD, RED, WHITE_GREY } from "../../../constants"
+import { BLUE, FLASHY_GREEN, GOLD, GREEN, RED, WHITE_GREY } from "../../../constants"
 import { AssetModel } from "../../../models/asset"
 import { SetModel } from "../../../models/set"
 import { Format } from "../../../utils"
@@ -63,6 +63,24 @@ const AssetCell = (props: IProps) => {
     const synced = asset.isSynced(timeframe)
     const label = ressource.get().dependencies().length > 0 ? asset.get().address().get().printableID() : ressource.get().label()
 
+
+    const renderLastRead = () => {
+        const DAY =  86_400_000
+        const lastRead = asset.get().lastReadTime()
+        let color = BLUE
+        if (lastRead.getTime() < Date.now() - DAY * 10){
+            color = GOLD
+        } else if (lastRead.getTime() < Date.now() - DAY * 20){
+            color = RED
+        }
+        
+        return (
+            <p style={{fontSize: 11, margin: 0, marginTop: 5}}>
+                Last read: <span style={{fontWeight: 600}}><span style={{color}}>{moment(lastRead).fromNow()}</span></span>
+            </p> 
+        )
+    }
+
     return (
         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
             <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
@@ -106,12 +124,13 @@ const AssetCell = (props: IProps) => {
 
                             <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center', borderTop: '1px solid white', marginTop: 5, paddingTop: 10}}>
                                 <span style={{fontSize: 11, color: WHITE_GREY}}>Data availability:</span>
-                                {t1 > t0 &&<span style={{marginLeft: 5, fontSize: 11, fontWeight: 800}}>{t0} / <span style={{color: synced ? FLASHY_GREEN : GOLD}}>{!synced ? t1 : moment(t1).fromNow()}</span></span>}
+                                {t1 > t0 &&<span style={{marginLeft: 5, fontSize: 11, fontWeight: 800}}>{t0} / <span style={{color: synced ? FLASHY_GREEN : GOLD}}>{t1}</span></span>}
                                 {t1 <= t0 &&<span style={{marginLeft: 5, fontSize: 11, color: GOLD}}>None</span>}
                             </div>
                             <p style={{fontSize: 11, margin: 0, marginTop: 5}}>
                                 Data range from: <span style={{fontWeight: 600}}><span style={{color: RED}}>{Format.largeNumberToShortString(valueRange[0])}</span> to <span style={{color: FLASHY_GREEN}}>{Format.largeNumberToShortString(valueRange[1])}</span></span>
                             </p> 
+                            {renderLastRead()}
                             <p style={{fontSize: assetType.length > 30 ? 9.5 : 11, margin: 0, marginTop: 5}}>
                                 ID: <span style={{fontWeight: 600}}>{assetType.toUpperCase()}</span>
                             </p> 
@@ -155,7 +174,7 @@ const AssetCell = (props: IProps) => {
 
             </div>
             <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
-                {t1 > t0 &&<span style={{fontSize: 10, fontWeight: 500, color: WHITE_GREY}}>{t0} / <span style={{fontWeight: 800, color: synced ? FLASHY_GREEN : GOLD}}>{!synced ? t1 : moment(t1).fromNow()}</span></span>}
+                {t1 > t0 &&<span style={{fontSize: 10, fontWeight: 500, color: WHITE_GREY}}>{t0} / <span style={{fontWeight: 800, color: synced ? FLASHY_GREEN : GOLD}}>{t1}</span></span>}
                 {t1 <= t0 &&<span style={{fontSize: 11, color: GOLD, fontStyle: 'italic'}}>Not synchronized</span>}
             </div>            
         </div>

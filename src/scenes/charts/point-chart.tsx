@@ -14,6 +14,7 @@ import Checkbox from "../../components/checkbox"
 import dataAffiner, { IAssetRef, TDataPoint , IDataLine, DataAffiner } from "./data-affiner"
 import { IPointData } from "../../models/tick/point"
 import Loading from "../../components/loader"
+import { color } from "d3"
 
 
 const selectTickValue = (asset: AssetModel, tick: TDataPoint, column: string): number => {
@@ -34,7 +35,12 @@ const wrapTickValuePercent = (value: number, max: number, isPercent: boolean) =>
     return value
 }
 
-const getColor = (asset:AssetModel, column:string)=> {
+const getColor = (asset:AssetModel, column:string, override: { [key: string]: string }) => {
+    const id = asset.get().addressString() + column
+    if (override[id]){
+        return override[id]
+    }
+
     const args = asset.get().address().get().arguments()
     let argInt = 0
     if (args.length > 0){
@@ -55,6 +61,59 @@ const convertToPercentOfMax = (data: LineData[], maxVisible: number): LineData[]
     }));
 };
 
+const COLORS = [
+    [
+        '#ff930f',
+        '#ff6361',
+        '#ffa600',
+        '#95b8d1',
+        '#879e82'
+    ],
+    [
+        '#893f71',
+        '#72b043',
+        '#f37324',
+        '#008585',
+        '#caf0f6',
+    ],
+    [
+        '#f72585',
+        '#a5eb64',
+        '#bf5b04',
+        '#4361ee',
+        '#4cc9f0'
+    ],
+    [
+        '#fff000',
+        '#ed008c',
+        '#00aeef',
+        '#b5bdc4',
+        '#ea8f98',
+    ],
+    [
+        '#3bcae5',
+        '#7d8bae',
+        '#fde8b2',
+        '#80558c',
+        '#a4f4a1'
+    ],
+    [
+        '#7fc194',
+        '#80c783',
+        '#57e5d7',
+        '#6c58f1',
+        '#e6e84c',
+    ],
+    [
+        '#fcc3e2',
+        '#f0f0f0',
+        '#c0c0fd',
+        '#05ff9b',
+        '#d2b48c'
+    ]
+]
+
+
 const PointToolTip = React.forwardRef((props: {
     charts: IDataLine[]
     isPercent: boolean,
@@ -62,6 +121,9 @@ const PointToolTip = React.forwardRef((props: {
     timeframe: number,
     loading: boolean
     dataAffiner: DataAffiner
+    colorOverride: {[key: string]: string}
+    onChangeLineColor: (chart: IDataLine) => void
+    onDeleteLine: (chart: IDataLine) => void
 }, ref) => {
 
     const {
@@ -80,7 +142,7 @@ const PointToolTip = React.forwardRef((props: {
 
     const [selectedTime, setSelectedTime] = React.useState<number | null>(null)
 
-    const renderItem = (asset: AssetModel, chart: IDataLine, ref: IAssetRef) => {
+    const renderItem = (asset: AssetModel, chart: IDataLine, ref: IAssetRef, idx: number) => {
         if (ref.data.length === 0){
             return null
         }
@@ -100,7 +162,7 @@ const PointToolTip = React.forwardRef((props: {
             }
         }
 
-        const color = getColor(asset, chart.column)
+        const color = getColor(asset, chart.column, props.colorOverride)
         let name = asset.get().address().get().printableID()
         if (asset.get().dataType() != 3){
             name += `.${chart.column.toUpperCase()}`
@@ -109,14 +171,19 @@ const PointToolTip = React.forwardRef((props: {
         const tickValue = selectTickValue(asset, tick, chart.column)
 
         return (
-            <div style={{color, fontSize: 12, fontWeight: 500}}>
-                <span>{name} : {tickValue} {isPercent ? ` (${wrapTickValuePercent(tickValue, max, isPercent).toFixed(2)}%)` : ''}</span>
+            <div 
+                className="noselect" 
+                onClick={() => props.onChangeLineColor(chart)} 
+                onDoubleClick={() => props.onDeleteLine(chart)}
+                style={{color, fontSize: 12, fontWeight: 500, cursor: 'pointer'}}
+            >
+                <span>{name} : {tickValue.toLocaleString()} {isPercent ? ` (${wrapTickValuePercent(tickValue, max, isPercent).toFixed(2)}%)` : ''}</span>
             </div>
         )
     }
 
     return (
-        <SMALegend2 style={{position: 'absolute', zIndex:1000, top: 5, left: 5, display: 'flex', gap: '2px 20px', flexWrap:'wrap', width: '85%' }}>
+        <SMALegend2 style={{position: 'absolute', zIndex: 1000, top: 5, left: 5, display: 'flex', gap: '2px 20px', flexWrap:'wrap', width: '85%' }}>
             {charts.map((chart, idx) => {
                 const asset = sets.assetsByAddresses([chart.asset_address]).first() as AssetModel
                 const ref= dataAffiner.getAssetRefByAddr(asset.get().addressString())
@@ -125,7 +192,7 @@ const PointToolTip = React.forwardRef((props: {
                 }
                 return (
                     <div key={idx+1}>
-                        {renderItem(asset, chart, ref)}
+                        {renderItem(asset, chart, ref, idx)}
                     </div>
                 )
             })}
@@ -148,9 +215,12 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
     const toolTipRef = useRef<{
         updateSelectedTime: (time: number | null) => void
     } | null>(null)
+    const [_r, setR] = React.useState<number>(0)
+
 
     const [isPercent, setIsPercent] = React.useState(false)
     const [isMaxInTicks, setIsMaxInTicks] = React.useState(true)
+    const [assetColorOverride, setAssetColorOverride] = React.useState<{[key: string]: string}>({})
 
     useImperativeHandle(ref, () => ({
         serie: lineSerieRef.current,
@@ -179,6 +249,14 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
     const handleCrosshairMove = useCallback((e: MouseEventParams) => {
         debouncedCrosshairMove(e)
     }, []);
+
+    const onOverrideAssetColor= (chart: IDataLine) => {
+        const idx = Math.floor(Math.random() * COLORS.length)
+        const list = COLORS[idx]
+        const color = list[Math.floor(Math.random() * list.length)]
+        const id = chart.asset_address + chart.column
+        setAssetColorOverride({...assetColorOverride, [id]: color})
+    }
 
     const getTicks = (asset: AssetModel, column: string)=> {
         const ref = dataAffiner.getAssetRefByAddr(asset.get().addressString())
@@ -235,9 +313,13 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
     const renderLines = () => {
         return props.charts.map((chart: IDataLine, idx) => {
             const asset = sets.assetsByAddresses([chart.asset_address]).first() as AssetModel
-
             const ticks = getTicks(asset, chart.column)
-            const data = isPercent ? convertToPercentOfMax(ticks, chart.max_value) : ticks
+            let max = chart.max_value
+            if (isPercent && !isMaxInTicks){
+                max = asset.get().consistencies().findByTimeframe(timeframe)?.get().maxValue() as number
+            }
+
+            const data = isPercent ? convertToPercentOfMax(ticks, max) : ticks
 
             return (
                 <LineSeries
@@ -251,7 +333,7 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
                         type: isPercent ? 'percent' : 'price',
                     }}
                     lineWidth={2}
-                    color={getColor(asset, chart.column)}
+                    color={getColor(asset, chart.column, assetColorOverride)}
                 />
             )
         })
@@ -267,6 +349,21 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
                 timeframe={timeframe}
                 loading={props.loading}
                 dataAffiner={dataAffiner}
+                colorOverride={assetColorOverride}
+                onChangeLineColor={onOverrideAssetColor}
+                onDeleteLine={(chart: IDataLine) => {
+                    const idx = dataAffiner.getMotherChartIndex(props.charts[0])
+                    if (idx === -1){
+                        return
+                    }
+                    try {
+                        dataAffiner.removeSubChart(idx, chart)
+                        setR(Math.random())
+                    } catch (e){
+                        alert(e)
+                    }
+
+                }}
             />
             <Chart 
                 onCrosshairMove={handleCrosshairMove} 
@@ -279,7 +376,7 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
                 />
                 {renderLines()}
             </Chart>
-            <div style={{display: 'flex', flexDirection: 'row', width:'100%', marginTop: 30, marginBottom: 30}}>
+            {props.charts.length < 5 && <div style={{display: 'flex', flexDirection: 'row', width:'100%', marginTop: 30, marginBottom: 30}}>
                 <span style={{fontSize: 12, fontWeight: 700, marginRight: 30, marginLeft: 20, marginTop: 23}}>ADD NEW LINE</span>
                 <div style={{width: '85%'}}>
                     <AddAsset 
@@ -297,7 +394,7 @@ const PointChart =  React.forwardRef<any, IChartOptions & IPointChartProps>((pro
                         multiColumn={false}
                     />
                 </div>
-            </div>
+            </div>}
 
             {renderValueDisplayMenu()}
             {renderPercentTypeMaxMenu()}
@@ -309,7 +406,7 @@ const SMALegend2 = styled.div`
     font-size: 12px;
     color: white;
     text-align: left;
-    pointer-events: none;
+
 `
 
 export default PointChart

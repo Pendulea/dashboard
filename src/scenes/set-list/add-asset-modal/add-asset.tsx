@@ -199,6 +199,8 @@ export default (props: IProps) => {
                             newCpy[index] =  e.value
                             setDependencyValues(newCpy)
                         }}
+                        
+
                         styles={selectStyle}
                     />
                 {ressource && <span style={{color: 'white', fontSize: 10.5, marginTop: 7, fontStyle: 'italic'}}>{ressource.get().description()}</span>}

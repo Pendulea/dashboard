@@ -36,7 +36,7 @@ const ChartModal: React.FC<ChartModalProps> = ({ onClose, dropdownRef, show }) =
     const chartRefs = useRef<{[key in string]: UnitChartRefType}>({})
     const dataAffinerRef = useRef(new DataAffiner())
     const [selectedTimeframe, setSelectedTimeframe] = useState<number>(MIN_TIME_FRAME)
-
+   
     useEffect(() => {
       dataAffinerRef.current.setTimeframe(selectedTimeframe)
       onRefreshConcernedAssets()

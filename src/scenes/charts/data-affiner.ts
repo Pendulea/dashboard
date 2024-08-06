@@ -312,6 +312,22 @@ export class DataAffiner {
         this._addAssetIfRequired(address)
         this.charts[motherChartIndex].sub_charts.push({asset_address: address, column, max_value: 0})
     }
+
+    removeSubChart = (motherChartIndex: number, subChart: IDataLine) => {
+        const motherChart = this.charts[motherChartIndex]
+        if (!motherChart)
+            throw new Error(`Mother chart not found`)
+
+        const subChartIndex = motherChart.sub_charts.findIndex((data: IDataLine) => data.asset_address === subChart.asset_address && data.column === subChart.column)
+        if (subChartIndex === -1)
+            throw new Error(`Sub chart not found`)
+
+        if (motherChart.sub_charts.length === 1){
+            throw new Error(`Mother chart must have at least one sub chart`)
+        }
+
+        motherChart.sub_charts.splice(subChartIndex, 1)
+    }
 } 
 
 export default DataAffiner
