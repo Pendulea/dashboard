@@ -114,6 +114,7 @@ const SetCell = (props:IProps) => {
                             onAdd={onAddTimeframe}
                             selectedTimeframe={timeframe}
                             timeframes={set.get().availableTimeframes()}
+                            // set={set}
                         />
                     </div>
                 </div>

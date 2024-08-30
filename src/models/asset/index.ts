@@ -3,8 +3,9 @@ import { AddressParsedModel, DEFAULT_ADDRESS_PARSED, IAddressParsed } from './ad
 import { ConsistencyCollection, IConsistency } from './consistency'
 import { AvailableAssetCollection, AvailableAssetModel } from '../ressources/asset'
 import ressources from '../ressources'
-import { DATA_DELAY_TOLERANCE } from '../../constants'
+import { DATA_DELAY_TOLERANCE, MIN_TIME_FRAME } from '../../constants'
 import { last } from 'lodash'
+import { service } from '../../utils'
 
 export interface IAsset {
     address_string: string
@@ -88,6 +89,25 @@ export class AssetModel extends Model {
     isUnit = () => this.get().dataType() === 1
     isVolume = () => this.get().dataType() === 2
     isPoint = () => this.get().dataType() === 3
+
+    rollback = async (timeBackward: number, timeframe: number) => {
+        const c = this.get().consistencies().findByTimeframe(MIN_TIME_FRAME)
+        if (!c){
+            return null
+        }
+        const range = c.get().range()
+        const toTime = range[1] - timeBackward
+        try {
+            await service.request('RollbackAsset', {
+                address: this.get().addressString(),
+                to_time: toTime > range[0] ? toTime : range[0],
+                timeframe: timeframe
+            })
+            return null
+        } catch (e: any) {
+            return e.toString() as string
+        }
+    }
 
 }
 

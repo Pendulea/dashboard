@@ -1,5 +1,5 @@
 import {  useState } from "react"
-import { BLUE, FLASHY_GREEN, GOLD, GREEN, RED, WHITE_GREY } from "../../../constants"
+import { BLUE, FLASHY_GREEN, GOLD, GREEN, MIN_TIME_FRAME, RED, WHITE_GREY } from "../../../constants"
 import { AssetModel } from "../../../models/asset"
 import { SetModel } from "../../../models/set"
 import { Format } from "../../../utils"
@@ -87,7 +87,7 @@ const AssetCell = (props: IProps) => {
                 <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
                     <div style={{display: 'flex', flexDirection: 'row', alignItems: 'center'}}>
                         <img style={{width: synced ? 14 : 12, height: synced ? 14 : 12, marginRight: synced ? 5 : 7}} src={`/images/${synced ? 'check-green.png' : 'sync-orange.png'}`} />
-                        <span style={{fontSize: label.length > 20 ? 11 : 14}}>{label}</span>
+                        <span  style={{fontSize: label.length > 20 ? 11 : 14}}>{label}</span>
                     </div>
                     <span onClick={() => setIsTYOpen(true)} style={{cursor: 'pointer', fontSize: 11, color: dataTypeColor, marginLeft: 3 }}>({dataTypeName})</span>
                 </div>
@@ -133,7 +133,35 @@ const AssetCell = (props: IProps) => {
                             {renderLastRead()}
                             <p style={{fontSize: assetType.length > 30 ? 9.5 : 11, margin: 0, marginTop: 5}}>
                                 ID: <span style={{fontWeight: 600}}>{assetType.toUpperCase()}</span>
-                            </p> 
+                            </p>
+
+                            {t1 > t0 && <div style={{marginTop: 10}}>
+                                <span style={{fontWeight: 400, fontSize: 10.5}}>ACTIONS :</span>
+                                <div style={{display: 'flex', flexDirection: 'row',justifyContent: 'space-between',marginTop: 2}}>
+                                    <span 
+                                        onClick={async () => {
+                                            //100 years
+                                            const r = await asset.rollback(86_400 * 1000 * 365 * 100, timeframe)
+                                            if (r){
+                                                alert(r)
+                                            } else {
+                                                alert('Timeframe deletion processing...')
+                                            }
+                                        }}
+                                        style={{cursor: 'pointer', fontSize:9.5, color: RED, fontWeight: 700, border: `1px solid ${RED}`,paddingTop: 3, paddingBottom:3, paddingLeft: 5, paddingRight: 5}}>Delete {timeframe === MIN_TIME_FRAME  ? 'full' : Format.timeFrameToLabel(timeframe) as string} dataset</span>
+                                    <span 
+                                        onClick={async () => {
+                                            //7 days
+                                            const r = await asset.rollback(86_400 * 1000 * 90, timeframe)
+                                            if (r){
+                                                alert(r)
+                                            } else {
+                                                alert('Rollback processing...')
+                                            }
+                                        }}
+                                        style={{cursor: 'pointer',fontSize:9.5, color: 'orange', fontWeight: 700, border: `1px solid orange`,paddingTop: 3, paddingBottom:3, paddingLeft: 5, paddingRight: 5}}>Rollback to {Format.unixTimestampToStrDate(new Date(range[1] - 86_400 * 1000 * 90))} {timeframe !== MIN_TIME_FRAME ? '(' + Format.timeFrameToLabel(timeframe) as string + ')' : ''}</span>
+                                </div>
+                            </div>}
 
                     </div>
                 )}

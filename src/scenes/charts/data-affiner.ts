@@ -248,7 +248,6 @@ export class DataAffiner {
                 }
                 const assetIdx = this.getAssetRefIndexByAddr(address)
                 this.assets[assetIdx].count_fetch++
-
                 this.assets[assetIdx]._data = [...res.list, ...this.assets[assetIdx]._data]
                 this._synchronizeData()
                 this._updateMaxWithNewTicks(this.assets[assetIdx], res.list)
